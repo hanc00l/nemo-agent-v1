@@ -219,6 +219,11 @@ nemo-agent/
 
 在前期调试和开发阶段，使用单一的ubuntu虚拟机更方便一些。可用claude-code/install_ubuntu.sh快速完成依赖组件和环境的安装。
 
+### 靶场参考
+
+- [xbow](https://github.com/hanc00l/tencent-cloud-hackathon-intelligent-pentest-competition-api-server)：fork自Neuro-Sploit/xbow-validation-benchmarks并作了一些修改。
+- [vulhub](https://github.com/vulhub/vulhub)：测试cve漏洞
+
 ## 注意事项
 
 - 仅用于授权的安全测试和 CTF 竞赛
@@ -229,3 +234,4 @@ nemo-agent/
 
 - [TinyCTFer](https://wiki.chainreactors.red/blog/2025/12/01/intent_is_all_you_need/)
 - [Meta-Tooling](https://wiki.chainreactors.red/blog/2025/12/02/intent_engineering_01/)
+- [wooyun-legacy、xianzhi-research](https://github.com/tanweai)
