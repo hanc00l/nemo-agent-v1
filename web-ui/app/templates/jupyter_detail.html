@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ filename }} - Jupyter Session</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-blue: #0d6efd;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar-brand {
+            color: var(--accent-blue) !important;
+            font-weight: bold;
+        }
+
+        .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue) !important;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .notebook-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .notebook-title {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meta-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .meta-value {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        /* 单元格样式 */
+        .cell {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .cell-header {
+            background: var(--bg-secondary);
+            padding: 8px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cell-type {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .cell-type.code {
+            color: var(--accent-blue);
+        }
+
+        .cell-type.markdown {
+            color: var(--text-secondary);
+        }
+
+        .cell-index {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .cell-content {
+            padding: 15px;
+        }
+
+        .cell-source {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .cell-markdown {
+            line-height: 1.6;
+        }
+
+        .cell-markdown h1,
+        .cell-markdown h2,
+        .cell-markdown h3 {
+            margin-top: 0.5em;
+            margin-bottom: 0.3em;
+        }
+
+        /* 输出区域 */
+        .cell-outputs {
+            border-top: 1px solid var(--border-color);
+            background: #f8f9fa;
+        }
+
+        .output {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .output:last-child {
+            border-bottom: none;
+        }
+
+        .output-text {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: var(--text-primary);
+        }
+
+        .output-stream.stdout {
+            color: var(--text-primary);
+        }
+
+        .output-stream.stderr {
+            color: #dc3545;
+        }
+
+        .output-error {
+            background: #f8d7da;
+            border-left: 3px solid #dc3545;
+            padding: 10px 12px;
+            border-radius: 4px;
+        }
+
+        .error-name {
+            font-weight: 600;
+            color: #dc3545;
+            margin-bottom: 5px;
+        }
+
+        .error-value {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .error-traceback {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: #721c24;
+            white-space: pre-wrap;
+        }
+
+        .output-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .output-html {
+            overflow-x: auto;
+        }
+
+        /* 代码高亮 */
+        pre.hljs {
+            background: #282c34 !important;
+            border-radius: 6px;
+            padding: 12px !important;
+            margin: 0;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.4;
+        }
+
+        /* 刷新控件样式 */
+        .refresh-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .refresh-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .refresh-btn:hover {
+            background-color: #0b5ed7;
+        }
+
+        .refresh-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        .form-check-input {
+            cursor: pointer;
+        }
+
+        .form-check-label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* 旋转动画 */
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .rotating {
+            animation: rotate 1s linear infinite;
+        }
+
+        /* 最后更新时间显示 */
+        .last-updated {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-left: 10px;
+        }
+
+        .new-content-flash {
+            animation: flashHighlight 1s ease-out;
+        }
+
+        @keyframes flashHighlight {
+            0% { background-color: rgba(13, 110, 253, 0.2); }
+            100% { background-color: white; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/jupyter/">
+                <i class="bi bi-journal-code"></i> Jupyter Sessions
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-house"></i> 首页
+                </a>
+                <a class="nav-link" href="/notes/">
+                    <i class="bi bi-journal-text"></i> Notes
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <a href="/jupyter/" class="back-link">
+            <i class="bi bi-arrow-left"></i> 返回列表
+        </a>
+
+        {% if error %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> 错误: {{ error }}
+        </div>
+        {% else %}
+
+        <!-- Notebook 头部信息 -->
+        <div class="notebook-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="notebook-title">
+                        <i class="bi bi-file-earmark-code"></i> {{ filename }}
+                    </h1>
+                    {% if metadata %}
+                    <div class="meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Kernel</span>
+                            <span class="meta-value">{{ metadata.kernel }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">语言</span>
+                            <span class="meta-value">{{ metadata.language }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">总单元格</span>
+                            <span class="meta-value">{{ metadata.total_cells }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">代码单元格</span>
+                            <span class="meta-value">{{ metadata.code_cells }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">修改时间</span>
+                            <span class="meta-value" id="modifiedTime">{{ metadata.modified|date:"Y-m-d H:i:s" }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">文件大小</span>
+                            <span class="meta-value">{% widthratio metadata.size 1024 1 %} KB</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- 刷新控件 -->
+                <div class="refresh-controls">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh">
+                        <label class="form-check-label" for="autoRefresh">
+                            自动刷新
+                        </label>
+                    </div>
+                    <button class="refresh-btn" id="refreshBtn" onclick="refreshNotebook()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                    <span class="last-updated" id="lastUpdated"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 单元格列表 -->
+        {% if cells %}
+        {% for cell in cells %}
+        <div class="cell" data-cell-type="{{ cell.type }}" data-cell-index="{{ cell.index }}">
+            <div class="cell-header">
+                <span class="cell-type {{ cell.type }}">
+                    {% if cell.type == 'code' %}
+                        <i class="bi bi-code-square"></i> Code
+                    {% elif cell.type == 'markdown' %}
+                        <i class="bi bi-markdown"></i> Markdown
+                    {% else %}
+                        <i class="bi bi-file-text"></i> {{ cell.type }}
+                    {% endif %}
+                </span>
+                <span class="cell-index">[{{ cell.index }}]</span>
+            </div>
+
+            <div class="cell-content">
+                {% if cell.source %}
+                {% if cell.type == 'code' %}
+                <pre><code class="language-python">{{ cell.source }}</code></pre>
+                {% else %}
+                <div class="cell-markdown">{{ cell.source }}</div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-dash"></i>
+                    <p class="mb-0">空单元格</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if cell.outputs %}
+            <div class="cell-outputs">
+                {% for output in cell.outputs %}
+                <div class="output">
+                    {% if output.output_type == 'stream' %}
+                        <div class="output-text output-stream {{ output.name }}">
+                            <span class="badge bg-secondary me-2">{{ output.name|upper }}</span>
+                            <pre>{{ output.text }}</pre>
+                        </div>
+                    {% elif output.output_type == 'error' %}
+                        <div class="output-error">
+                            <div class="error-name">{{ output.error.name }}</div>
+                            <div class="error-value">{{ output.error.value }}</div>
+                            {% if output.error.traceback %}
+                            <div class="error-traceback">{{ output.error.traceback|join:"\n" }}</div>
+                            {% endif %}
+                        </div>
+                    {% elif output.output_type == 'execute_result' or output.output_type == 'display_data' %}
+                        {% if output.text %}
+                        <div class="output-text">
+                            <pre>{{ output.text }}</pre>
+                        </div>
+                        {% endif %}
+                        {% if output.image %}
+                        <img src="data:image/png;base64,{{ output.image }}" class="output-image" alt="Output">
+                        {% endif %}
+                        {% if output.html %}
+                        <div class="output-html">
+                            {{ output.html|safe }}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="output-text">
+                            <pre>{{ output.text|default:"[无输出]" }}</pre>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-journal-x"></i>
+            <h4>此 Notebook 没有单元格</h4>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const filename = '{{ filename }}';
+        let autoRefreshInterval = null;
+        const AUTO_REFRESH_INTERVAL = 10000; // 10秒
+        // 使用 ISO 格式与 API 返回值保持一致
+        let lastModified = {% if metadata %}'{{ metadata.modified|date:"Y-m-d\TH:i:s" }}'{% else %}''{% endif %};
+
+        // 初始化代码高亮
+        function highlightCode() {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        }
+
+        // 手动刷新 Notebook
+        async function refreshNotebook() {
+            const btn = document.getElementById('refreshBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise rotating"></i> 刷新中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/jupyter/${filename}/`);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('刷新失败:', data.error);
+                    btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> 刷新失败';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                    return;
+                }
+
+                // 检查是否有更新（比较修改时间）
+                const newModified = data.metadata.modified;
+                const hasUpdates = newModified !== lastModified;
+                const previousModified = lastModified;
+
+                // 只在有更新时更新内容
+                if (hasUpdates) {
+                    // 更新元数据
+                    if (data.metadata) {
+                        updateMetadata(data.metadata);
+                    }
+
+                    // 更新单元格
+                    if (data.cells && data.cells.length > 0) {
+                        updateCells(data.cells);
+                    }
+
+                    // 更新最后修改时间记录
+                    lastModified = newModified;
+
+                    // 添加闪烁效果
+                    document.querySelectorAll('.cell').forEach(cell => {
+                        cell.classList.add('new-content-flash');
+                        setTimeout(() => {
+                            cell.classList.remove('new-content-flash');
+                        }, 1000);
+                    });
+
+                    console.log('内容已更新:', newModified);
+                } else {
+                    console.log('无新内容，跳过更新');
+                }
+
+                // 更新"最后更新"时间戳
+                updateLastUpdated();
+
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            } catch (error) {
+                console.error('刷新失败:', error);
+                btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> 刷新失败';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        // 更新元数据
+        function updateMetadata(metadata) {
+            const modifiedTimeEl = document.getElementById('modifiedTime');
+            if (modifiedTimeEl) {
+                modifiedTimeEl.textContent = formatDateTime(metadata.modified);
+            }
+        }
+
+        // 更新单元格
+        function updateCells(cells) {
+            const existingCells = document.querySelectorAll('.cell');
+
+            // 如果单元格数量变化，重新加载整个页面
+            if (existingCells.length !== cells.length) {
+                console.log('单元格数量变化，重新加载页面');
+                location.reload();
+                return;
+            }
+
+            // 逐个更新单元格内容，按索引匹配
+            let updatedCount = 0;
+            cells.forEach((cell, index) => {
+                // 通过 data-cell-index 查找对应的单元格
+                const cellElement = document.querySelector(`.cell[data-cell-index="${cell.index}"]`);
+
+                if (cellElement) {
+                    // 检查内容是否真的变化了
+                    const sourceChanged = isCellSourceChanged(cellElement, cell);
+                    const outputsChanged = isCellOutputsChanged(cellElement, cell);
+
+                    if (sourceChanged || outputsChanged) {
+                        updateCellContent(cellElement, cell);
+                        updatedCount++;
+                    }
+                } else {
+                    console.warn('未找到单元格:', cell.index);
+                }
+            });
+
+            // 重新高亮代码
+            highlightCode();
+
+            console.log(`更新了 ${updatedCount} 个单元格`);
+        }
+
+        // 检查单元格源代码是否变化
+        function isCellSourceChanged(cellElement, newCell) {
+            const contentDiv = cellElement.querySelector('.cell-content');
+            if (!contentDiv) return true;
+
+            const currentSource = contentDiv.textContent || '';
+            return currentSource !== newCell.source;
+        }
+
+        // 检查单元格输出是否变化
+        function isCellOutputsChanged(cellElement, newCell) {
+            const outputsDiv = cellElement.querySelector('.cell-outputs');
+
+            // 如果两者都没有输出，没变化
+            if ((!outputsDiv || outputsDiv.children.length === 0) && (!newCell.outputs || newCell.outputs.length === 0)) {
+                return false;
+            }
+
+            // 如果一方有输出，一方没有，有变化
+            if ((!outputsDiv || outputsDiv.children.length === 0) !== (!newCell.outputs || newCell.outputs.length === 0)) {
+                return true;
+            }
+
+            // 比较输出数量
+            if (outputsDiv.children.length !== newCell.outputs.length) {
+                return true;
+            }
+
+            // 简单比较：如果有输出，认为可能变化（实际可以更精确地比较）
+            return true;
+        }
+
+        // 更新单个单元格内容
+        function updateCellContent(cellElement, cell) {
+            // 更新源代码
+            if (cell.source) {
+                const contentDiv = cellElement.querySelector('.cell-content');
+                if (cell.type === 'code') {
+                    contentDiv.innerHTML = `<pre><code class="language-python">${escapeHtml(cell.source)}</code></pre>`;
+                } else {
+                    contentDiv.innerHTML = `<div class="cell-markdown">${escapeHtml(cell.source)}</div>`;
+                }
+            }
+
+            // 更新输出
+            const outputsDiv = cellElement.querySelector('.cell-outputs');
+            if (outputsDiv) {
+                outputsDiv.remove();
+            }
+
+            if (cell.outputs && cell.outputs.length > 0) {
+                const newOutputsDiv = document.createElement('div');
+                newOutputsDiv.className = 'cell-outputs';
+
+                cell.outputs.forEach(output => {
+                    const outputDiv = document.createElement('div');
+                    outputDiv.className = 'output';
+
+                    if (output.output_type === 'stream') {
+                        outputDiv.innerHTML = `
+                            <div class="output-text output-stream ${output.name}">
+                                <span class="badge bg-secondary me-2">${output.name.toUpperCase()}</span>
+                                <pre>${escapeHtml(output.text)}</pre>
+                            </div>
+                        `;
+                    } else if (output.output_type === 'error') {
+                        outputDiv.innerHTML = `
+                            <div class="output-error">
+                                <div class="error-name">${escapeHtml(output.error.name)}</div>
+                                <div class="error-value">${escapeHtml(output.error.value)}</div>
+                                ${output.error.traceback ? `<div class="error-traceback">${escapeHtml(output.error.traceback.join('\\n'))}</div>` : ''}
+                            </div>
+                        `;
+                    } else if (output.output_type === 'execute_result' || output.output_type === 'display_data') {
+                        let html = '';
+                        if (output.text) {
+                            html += `<div class="output-text"><pre>${escapeHtml(output.text)}</pre></div>`;
+                        }
+                        if (output.image) {
+                            html += `<img src="data:image/png;base64,${output.image}" class="output-image" alt="Output">`;
+                        }
+                        if (output.html) {
+                            html += `<div class="output-html">${output.html}</div>`;
+                        }
+                        if (!html) {
+                            html = `<div class="output-text"><pre>${escapeHtml(output.text || '[无输出]')}</pre></div>`;
+                        }
+                        outputDiv.innerHTML = html;
+                    } else {
+                        outputDiv.innerHTML = `<div class="output-text"><pre>${escapeHtml(output.text || '[无输出]')}</pre></div>`;
+                    }
+
+                    newOutputsDiv.appendChild(outputDiv);
+                });
+
+                cellElement.appendChild(newOutputsDiv);
+            }
+        }
+
+        // 更新最后更新时间显示
+        function updateLastUpdated() {
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            const now = new Date();
+            lastUpdatedEl.textContent = `最后更新: ${now.toLocaleTimeString('zh-CN')}`;
+        }
+
+        // 格式化日期时间
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 启动自动刷新
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(refreshNotebook, AUTO_REFRESH_INTERVAL);
+            console.log('自动刷新已启动，间隔:', AUTO_REFRESH_INTERVAL / 1000, '秒');
+        }
+
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                console.log('自动刷新已停止');
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            highlightCode();
+            updateLastUpdated();
+
+            // 自动刷新切换
+            document.getElementById('autoRefresh').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

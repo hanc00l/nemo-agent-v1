@@ -1,0 +1,4 @@
+Django>=6.0,<6.1
+markdown>=3.0
+bleach>=5.0
+docker>=7.0

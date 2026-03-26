@@ -1,0 +1,1079 @@
+{% load static %}
+{% load time_extras %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ challenge.challenge_code }} - 挑战详情</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --border-color: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-blue: #0d6efd;
+            --accent-green: #198754;
+            --accent-red: #dc3545;
+            --accent-yellow: #ffc107;
+            --accent-orange: #fd7e14;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar-brand {
+            color: var(--accent-blue) !important;
+            font-weight: bold;
+        }
+
+        .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue) !important;
+        }
+
+        .card {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .card-header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-easy { background-color: #d1e7dd; color: var(--accent-green); }
+        .badge-medium { background-color: #fff3cd; color: var(--accent-orange); }
+        .badge-hard { background-color: #f8d7da; color: var(--accent-red); }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .status-running { background-color: var(--accent-green); box-shadow: 0 0 6px rgba(25, 135, 84, 0.4); }
+        .status-stopped { background-color: var(--text-secondary); }
+
+        .state-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .state-open { background: rgba(13, 110, 253, 0.1); color: var(--accent-blue); }
+        .state-started { background: rgba(180, 137, 10, 0.12); color: #b4890a; }
+        .state-success { background: rgba(25, 135, 84, 0.1); color: var(--accent-green); }
+        .state-fail { background: rgba(220, 53, 69, 0.1); color: var(--accent-red); }
+        .state-close { background: rgba(108, 117, 125, 0.1); color: var(--text-secondary); }
+
+        /* 笔记选项卡 */
+        .nav-tabs {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 12px 20px;
+            background: transparent;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--accent-blue);
+            border-bottom-color: transparent;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--accent-blue);
+            background: transparent;
+            border-bottom: 2px solid var(--accent-blue);
+        }
+
+        .tab-content {
+            padding: 20px 0;
+        }
+
+        .note-content {
+            color: var(--text-primary);
+            line-height: 1.8;
+        }
+
+        .note-content h1,
+        .note-content h2,
+        .note-content h3 {
+            color: var(--text-primary);
+            margin-top: 20px;
+            margin-bottom: 12px;
+        }
+
+        .note-content code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        .note-content pre {
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .note-content pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .note-content ul,
+        .note-content ol {
+            padding-left: 24px;
+        }
+
+        .note-content li {
+            margin: 8px 0;
+        }
+
+        .note-content blockquote {
+            border-left: 3px solid var(--border-color);
+            margin: 12px 0;
+            padding-left: 16px;
+            color: var(--text-secondary);
+        }
+
+        .note-content hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 20px 0;
+        }
+
+        /* 日志查看器 - 保持深色以便于阅读 */
+        .log-viewer {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            max-height: 500px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .log-line {
+            padding: 2px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+            color: #e0e0e0;
+        }
+
+        .log-line.info { color: #4fc3f7; }
+        .log-line.warn { color: #ffa726; }
+        .log-line.error { color: #ef5350; }
+        .log-line.success { color: #66bb6a; }
+        .log-line.debug { color: #9e9e9e; }
+
+        .log-timestamp {
+            color: #757575;
+            margin-right: 8px;
+        }
+
+        .log-empty {
+            text-align: center;
+            color: #9e9e9e;
+            padding: 40px;
+        }
+
+        /* 时间线 */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item {
+            position: relative;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 20px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px var(--border-color);
+        }
+
+        .timeline-item.state-started::before { background: #b4890a; }
+        .timeline-item.state-success::before { background: var(--accent-green); }
+        .timeline-item.state-fail::before { background: var(--accent-red); }
+
+        .timeline-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .timeline-label {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .timeline-detail {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* 容器卡片 */
+        .container-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .container-name {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+            color: var(--text-secondary);
+        }
+
+        /* 刷新按钮 */
+        .refresh-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .refresh-controls .form-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-controls .form-check-input {
+            background-color: white;
+            border-color: var(--border-color);
+        }
+
+        .refresh-btn {
+            background-color: var(--accent-blue);
+            border: none;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background-color: #0b5ed7;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+        }
+
+        .auto-refresh-indicator {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* 结果框 */
+        .result-box {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent-blue);
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 16px;
+        }
+
+        .result-box.success {
+            border-left-color: var(--accent-green);
+        }
+
+        .result-box.fail {
+            border-left-color: var(--accent-red);
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        /* 滚动条样式 */
+        .log-viewer::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-viewer::-webkit-scrollbar-track {
+            background: #2a2a2a;
+        }
+
+        .log-viewer::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        .log-viewer::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-trophy"></i> CTF 解题进度看板
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-speedometer2"></i> 仪表板
+                </a>
+                <a class="nav-link" href="/notes/">
+                    <i class="bi bi-journal-text"></i> Notes
+                </a>
+                <a class="nav-link" href="/jupyter/">
+                    <i class="bi bi-journal-code"></i> Jupyter Sessions
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 面包屑 -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/" style="color: var(--accent-blue); text-decoration: none;">仪表板</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ challenge.challenge_code }}</li>
+            </ol>
+        </nav>
+
+        <!-- 挑战基本信息 -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-flag-fill me-2"></i>
+                    {{ challenge.challenge_code }}
+                </div>
+                <span class="state-badge state-{{ challenge.state }}">
+                    {% if challenge.state == 'open' %}
+                        <i class="bi bi-inbox me-1"></i>待开始
+                    {% elif challenge.state == 'started' %}
+                        <i class="bi bi-arrow-repeat me-1"></i>进行中
+                    {% elif challenge.state == 'success' %}
+                        <i class="bi bi-check-circle-fill me-1"></i>已完成
+                    {% elif challenge.state == 'fail' %}
+                        <i class="bi bi-x-circle-fill me-1"></i>已失败
+                    {% elif challenge.state == 'close' %}
+                        <i class="bi bi-x-circle me-1"></i>已关闭
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">目标地址</span>
+                        <span class="info-value">{{ challenge.target_url }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">难度</span>
+                        <span class="info-value">
+                            <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">积分</span>
+                        <span class="info-value">{{ challenge.points }} pts</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">超时时间</span>
+                        <span class="info-value">{{ challenge.timeout_seconds }}s</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">获取时间</span>
+                        <span class="info-value">{{ challenge.fetched_at|format_local_time }}</span>
+                    </div>
+                    {% if challenge.started_at %}
+                    <div class="info-item">
+                        <span class="info-label">开始时间</span>
+                        <span class="info-value">{{ challenge.started_at|format_local_time }}</span>
+                    </div>
+                    {% endif %}
+                    {% if elapsed_time %}
+                    <div class="info-item">
+                        <span class="info-label">已运行时间</span>
+                        <span class="info-value" id="elapsedTime">{{ elapsed_time }}</span>
+                    </div>
+                    {% endif %}
+                    {% if challenge.updated_at and challenge.state != 'started' %}
+                    <div class="info-item">
+                        <span class="info-label">{% if challenge.state == 'success' %}完成时间{% elif challenge.state == 'fail' %}结束时间{% else %}更新时间{% endif %}</span>
+                        <span class="info-value">{{ challenge.updated_at|format_local_time }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if challenge.result %}
+                <div class="result-box {% if challenge.state == 'success' %}success{% elif challenge.state == 'fail' %}fail{% endif %}">
+                    <div class="result-label">结果</div>
+                    <div class="result-value">{{ challenge.result }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 容器状态 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-box-seam me-2"></i>容器状态
+            </div>
+            <div class="card-body">
+                {% if containers_status %}
+                    <div class="row">
+                        {% for container in containers_status %}
+                        <div class="col-md-6">
+                            <div class="container-card">
+                                <div class="d-flex align-items-center">
+                                    <span class="status-dot {% if container.running %}status-running{% else %}status-stopped{% endif %}"></span>
+                                    <span class="container-name">{{ container.name }}</span>
+                                </div>
+                                <span class="badge {% if container.running %}badge-easy{% else %}badge-hard{% endif %}">
+                                    {% if container.running %}运行中{% else %}已停止{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-box"></i>
+                        <p>暂无容器信息</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 笔记查看器 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-journal-text me-2"></i>笔记
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="notesTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                            <i class="bi bi-info-circle me-1"></i>信息收集
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="infer-tab" data-bs-toggle="tab" data-bs-target="#infer" type="button">
+                            <i class="bi bi-lightbulb me-1"></i>推理分析
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="result-tab" data-bs-toggle="tab" data-bs-target="#result" type="button">
+                            <i class="bi bi-check2-square me-1"></i>解题结果
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="notesTabContent">
+                    <div class="tab-pane fade show active" id="info" role="tabpanel">
+                        <div class="note-content">
+                            {% if notes.info %}
+                                {{ notes.info }}
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="bi bi-journal-x"></i>
+                                    <p>暂无信息收集笔记</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="infer" role="tabpanel">
+                        <div class="note-content">
+                            {% if notes.infer %}
+                                {{ notes.infer }}
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="bi bi-journal-x"></i>
+                                    <p>暂无推理分析笔记</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="result" role="tabpanel">
+                        <div class="note-content">
+                            {% if notes.result %}
+                                {{ notes.result }}
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="bi bi-journal-x"></i>
+                                    <p>暂无解题结果笔记</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时日志 -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-terminal me-2"></i>实时日志</span>
+                <div class="refresh-controls">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="autoRefreshLogs">
+                        <label class="form-check-label" for="autoRefreshLogs">
+                            自动刷新 <span class="auto-refresh-indicator">(实时)</span>
+                        </label>
+                    </div>
+                    <button class="refresh-btn" id="refreshLogsBtn" onclick="refreshLogs()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="log-viewer" id="logViewer">
+                    <div class="log-empty">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 时间线 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>时间线
+            </div>
+            <div class="card-body">
+                <div class="timeline" id="timeline">
+                    <div class="timeline-item state-open">
+                        <div class="timeline-time">{{ challenge.fetched_at|format_local_time }}</div>
+                        <div class="timeline-label">获取挑战</div>
+                        <div class="timeline-detail">从平台获取到新挑战</div>
+                    </div>
+                    {% if challenge.started_at %}
+                    <div class="timeline-item state-started">
+                        <div class="timeline-time">{{ challenge.started_at|format_local_time }}</div>
+                        <div class="timeline-label">开始解题</div>
+                        <div class="timeline-detail">启动容器，开始自动解题</div>
+                    </div>
+                    {% endif %}
+                    {% if challenge.state == 'success' or challenge.state == 'fail' or challenge.state == 'close' %}
+                    {% if challenge.updated_at %}
+                    <div class="timeline-item state-{{ challenge.state }}">
+                        <div class="timeline-time">{{ challenge.updated_at|format_local_time }}</div>
+                        <div class="timeline-label">
+                            {% if challenge.state == 'success' %}解题成功
+                            {% elif challenge.state == 'fail' %}解题失败
+                            {% else %}已关闭{% endif %}
+                        </div>
+                        <div class="timeline-detail">
+                            {% if challenge.result %}{{ challenge.result }}{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const challengeCode = '{{ challenge.challenge_code }}';
+        const challengeState = '{{ challenge.state }}';
+        let autoRefreshInterval = null;
+        let logRefreshInterval = null;
+
+        // SSE 连接
+        let logEventSource = null;
+        let challengeEventSource = null;
+        let logs = [];  // 存储所有日志
+        const MAX_LOGS = 500;  // 最多保留500条日志
+
+        // XSS 防护: 安全渲染笔记 Markdown
+        // 先提取并保护代码块，然后转义剩余内容，最后恢复代码块
+        function renderNotes() {
+            document.querySelectorAll('.note-content').forEach(el => {
+                const text = el.textContent.trim();
+                if (text && !el.dataset.rendered) {
+                    // 第一步: 提取并保护代码块（用唯一占位符替换）
+                    const codeBlocks = [];
+                    let protectedText = text.replace(/`([^`]+)`/g, (match, code) => {
+                        codeBlocks.push(escapeHtml(code));  // 代码块内容也需要转义
+                        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+                    });
+
+                    // 第二步: 对剩余文本进行 HTML 转义（防止 XSS）
+                    protectedText = escapeHtml(protectedText);
+
+                    // 第三步: 进行 markdown 转换
+                    let html = protectedText
+                        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                        .replace(/---/gim, '<hr>')
+                        .replace(/^\- (.*$)/gim, '<li>$1</li>')
+                        .replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>')
+                        .replace(/\n/gim, '<br>');
+
+                    // 第四步: 恢复代码块（已转义，放在 <code> 标签内）
+                    html = html.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
+                        return `<code>${codeBlocks[index]}</code>`;
+                    });
+
+                    el.innerHTML = html;
+                    el.dataset.rendered = 'true';
+                }
+            });
+        }
+
+        // 转义 HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 解析日志行
+        function parseLogLine(line) {
+            if (!line || !line.trim()) return null;
+
+            // 尝试匹配时间戳
+            const timestampMatch = line.match(/^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})\.?\d*Z?\s*(\[?\w+\]?)?\s*(.*)$/);
+            if (!timestampMatch) return null;
+
+            const [, timestamp, level, content] = timestampMatch;
+
+            // 确定日志级别
+            let logClass = 'debug';
+            const lowerContent = content.toLowerCase();
+
+            if (lowerContent.includes('[error]') || lowerContent.includes('error') || lowerContent.includes('失败')) {
+                logClass = 'error';
+            } else if (lowerContent.includes('[warn]') || lowerContent.includes('warning') || lowerContent.includes('警告')) {
+                logClass = 'warn';
+            } else if (lowerContent.includes('[info]') || lowerContent.includes('info')) {
+                logClass = 'info';
+            } else if (lowerContent.includes('[success]') || lowerContent.includes('成功') || lowerContent.includes('solved')) {
+                logClass = 'success';
+            }
+
+            return {
+                timestamp: timestamp,
+                level: level,
+                content: content,
+                class: logClass
+            };
+        }
+
+        // 渲染日志
+        function renderLogs(logs) {
+            const viewer = document.getElementById('logViewer');
+
+            if (!logs || logs.length === 0) {
+                viewer.innerHTML = `
+                    <div class="log-empty">
+                        <i class="bi bi-journal-x"></i>
+                        <p>暂无日志</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            logs.forEach(log => {
+                const parsed = parseLogLine(log);
+                if (parsed) {
+                    html += `
+                        <div class="log-line ${parsed.class}">
+                            <span class="log-timestamp">${parsed.timestamp}</span>
+                            ${escapeHtml(parsed.content)}
+                        </div>
+                    `;
+                } else {
+                    html += `<div class="log-line">${escapeHtml(log)}</div>`;
+                }
+            });
+
+            viewer.innerHTML = html;
+            viewer.scrollTop = viewer.scrollHeight;
+        }
+
+        // 初始化日志（加载历史日志）
+        async function initLogs() {
+            try {
+                const response = await fetch(`/api/challenges/${challengeCode}/logs/?lines=200`);
+                const data = await response.json();
+                logs = data.logs || [];
+                renderLogs(logs);
+            } catch (error) {
+                console.error('加载历史日志失败:', error);
+            }
+        }
+
+        // 启动 SSE 日志流
+        function startLogSSE() {
+            if (logEventSource) {
+                logEventSource.close();
+            }
+
+            logEventSource = new EventSource(`/api/sse/logs/${challengeCode}`);
+
+            logEventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'log' && data.content) {
+                        // 添加新日志
+                        logs.push(data.content);
+
+                        // 限制日志数量
+                        if (logs.length > MAX_LOGS) {
+                            logs = logs.slice(-MAX_LOGS);
+                        }
+
+                        // 追加新日志行
+                        appendLogLine(data.content);
+                    }
+                } catch (e) {
+                    console.error('解析 SSE 日志数据失败:', e);
+                }
+            };
+
+            logEventSource.onerror = function(error) {
+                console.error('日志 SSE 连接错误:', error);
+
+                // 5秒后重连
+                setTimeout(() => {
+                    if (document.getElementById('autoRefreshLogs').checked) {
+                        startLogSSE();
+                    }
+                }, 5000);
+            };
+
+            updateSSEStatus('connected');
+        }
+
+        // 启动挑战状态 SSE
+        function startChallengeSSE() {
+            if (challengeEventSource) {
+                challengeEventSource.close();
+            }
+
+            challengeEventSource = new EventSource(`/api/sse/challenge/${challengeCode}`);
+
+            challengeEventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'challenge_update') {
+                        // 更新容器状态
+                        if (data.containers_status) {
+                            updateContainerStatus(data.containers_status);
+                        }
+
+                        // 如果状态变化，刷新页面
+                        if (data.state && data.state !== challengeState) {
+                            console.log('挑战状态变化，刷新页面...');
+                            setTimeout(() => location.reload(), 2000);
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析挑战状态数据失败:', e);
+                }
+            };
+
+            challengeEventSource.onerror = function(error) {
+                console.error('挑战状态 SSE 连接错误:', error);
+                setTimeout(() => startChallengeSSE(), 5000);
+            };
+        }
+
+        // 追加单行日志
+        function appendLogLine(log) {
+            const viewer = document.getElementById('logViewer');
+            const emptyMsg = viewer.querySelector('.log-empty');
+            if (emptyMsg) {
+                emptyMsg.remove();
+            }
+
+            const parsed = parseLogLine(log);
+            let lineHtml;
+            if (parsed) {
+                lineHtml = `
+                    <div class="log-line ${parsed.class}">
+                        <span class="log-timestamp">${parsed.timestamp}</span>
+                        ${escapeHtml(parsed.content)}
+                    </div>
+                `;
+            } else {
+                lineHtml = `<div class="log-line">${escapeHtml(log)}</div>`;
+            }
+
+            viewer.insertAdjacentHTML('beforeend', lineHtml);
+
+            // 限制 DOM 节点数量
+            const lines = viewer.querySelectorAll('.log-line');
+            if (lines.length > 200) {
+                // 移除旧的日志行
+                for (let i = 0; i < lines.length - 200; i++) {
+                    lines[i].remove();
+                }
+            }
+
+            viewer.scrollTop = viewer.scrollHeight;
+        }
+
+        // 更新容器状态
+        function updateContainerStatus(containersStatus) {
+            const containerCards = document.querySelectorAll('.container-card');
+            containerCards.forEach(card => {
+                const nameEl = card.querySelector('.container-name');
+                if (nameEl) {
+                    const name = nameEl.textContent.trim();
+                    const status = containersStatus.find(c => c.name === name);
+                    if (status) {
+                        const dot = card.querySelector('.status-dot');
+                        const badge = card.querySelector('.badge');
+
+                        if (status.running) {
+                            dot.className = 'status-dot status-running';
+                            badge.className = 'badge badge-easy';
+                            badge.textContent = '运行中';
+                        } else {
+                            dot.className = 'status-dot status-stopped';
+                            badge.className = 'badge badge-hard';
+                            badge.textContent = '已停止';
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新 SSE 连接状态显示
+        function updateSSEStatus(status) {
+            const indicator = document.getElementById('sseStatus');
+            if (!indicator) return;
+
+            if (status === 'connected') {
+                indicator.innerHTML = '<i class="bi bi-wifi"></i> 实时连接';
+                indicator.style.color = '#3fb950';
+            } else if (status === 'disconnected') {
+                indicator.innerHTML = '<i class="bi bi-wifi-off"></i> 连接断开';
+                indicator.style.color = '#f85149';
+            } else if (status === 'disabled') {
+                indicator.innerHTML = '<i class="bi bi-wifi-off"></i> 已禁用';
+                indicator.style.color = '#8b949e';
+            }
+        }
+
+        // 停止 SSE 连接
+        function stopSSE() {
+            if (logEventSource) {
+                logEventSource.close();
+                logEventSource = null;
+            }
+            if (challengeEventSource) {
+                challengeEventSource.close();
+                challengeEventSource = null;
+            }
+            updateSSEStatus('disconnected');
+        }
+
+        // 手动刷新日志
+        async function refreshLogs() {
+            await initLogs();
+        }
+
+        // 更新运行时间
+        function updateElapsedTime() {
+            if (challengeState !== 'started') return;
+
+            const startedAt = new Date('{{ challenge.started_at }}');
+            const now = new Date();
+            const elapsed = Math.floor((now - startedAt) / 1000);
+
+            if (elapsed > 0) {
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const el = document.getElementById('elapsedTime');
+                if (el) {
+                    el.textContent = `${minutes}分${seconds}秒`;
+                }
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 渲染笔记
+            renderNotes();
+
+            // 初始化日志
+            initLogs();
+
+            // 启动挑战状态 SSE 连接（始终启用）
+            startChallengeSSE();
+
+            // 日志 SSE 默认不启动，需用户手动开启
+            updateSSEStatus('disabled');
+
+            // 启动运行时间更新
+            if (challengeState === 'started') {
+                setInterval(updateElapsedTime, 1000);
+            }
+
+            // 自动刷新切换
+            document.getElementById('autoRefreshLogs').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    startLogSSE();
+                } else {
+                    if (logEventSource) {
+                        logEventSource.close();
+                        logEventSource = null;
+                    }
+                    updateSSEStatus('disabled');
+                }
+            });
+
+            // 添加 SSE 状态指示器
+            const logHeader = document.querySelector('.card-header:has(#refreshLogsBtn)');
+            if (logHeader) {
+                const statusSpan = document.createElement('span');
+                statusSpan.id = 'sseStatus';
+                statusSpan.style.marginLeft = '15px';
+                statusSpan.style.fontSize = '12px';
+                statusSpan.style.color = '#8b949e';
+                statusSpan.innerHTML = '<i class="bi bi-wifi-off"></i> 已禁用';
+                logHeader.appendChild(statusSpan);
+            }
+        });
+
+        // 页面卸载时关闭 SSE
+        window.addEventListener('beforeunload', function() {
+            stopSSE();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent 笔记列表</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-blue: #0d6efd;
+            --accent-purple: #6f42c1;
+            --accent-green: #198754;
+            --accent-orange: #fd7e14;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar-brand {
+            color: var(--accent-blue) !important;
+            font-weight: bold;
+        }
+
+        .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue) !important;
+        }
+
+        .stats-bar {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* 挑战卡片 */
+        .challenge-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .challenge-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+        }
+
+        .challenge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .challenge-code {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.95rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .challenge-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* 笔记类型标签 */
+        .note-types {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .note-type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .note-type-badge:hover {
+            transform: translateY(-2px);
+        }
+
+        .note-type-badge.info {
+            background: rgba(13, 110, 253, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(13, 110, 253, 0.2);
+        }
+
+        .note-type-badge.infer {
+            background: rgba(111, 66, 193, 0.1);
+            color: var(--accent-purple);
+            border: 1px solid rgba(111, 66, 193, 0.2);
+        }
+
+        .note-type-badge.result {
+            background: rgba(25, 135, 84, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(25, 135, 84, 0.2);
+        }
+
+        .note-type-badge .badge-icon {
+            margin-right: 6px;
+        }
+
+        .note-preview {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .note-preview-text {
+            font-family: 'Monaco', 'Consolas', monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.4;
+            color: var(--text-secondary);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .section-title {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-box {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .search-input {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 15px;
+            width: 100%;
+            font-size: 0.95rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/notes/">
+                <i class="bi bi-journal-text"></i> Agent 笔记
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-house"></i> 首页
+                </a>
+                <a class="nav-link" href="/jupyter/">
+                    <i class="bi bi-journal-code"></i> Jupyter Sessions
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 统计信息 -->
+        <div class="stats-bar">
+            <div class="row">
+                <div class="col-md-3 stat-item">
+                    <div class="stat-value">{{ total_challenges }}</div>
+                    <div class="stat-label">挑战</div>
+                </div>
+                <div class="col-md-3 stat-item">
+                    <div class="stat-value">{{ total_notes }}</div>
+                    <div class="stat-label">笔记总数</div>
+                </div>
+                <div class="col-md-3 stat-item">
+                    <div class="stat-value">{{ type_counts.info }}</div>
+                    <div class="stat-label">Info 笔记</div>
+                </div>
+                <div class="col-md-3 stat-item">
+                    <div class="stat-value">{{ type_counts.infer }}</div>
+                    <div class="stat-label">Infer 笔记</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 错误提示 -->
+        {% if error %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> 错误: {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- 搜索框 -->
+        <div class="search-box">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchInput" class="search-input" placeholder="搜索 Challenge Code (如: abc123)..." value="{{ search_query|default:'' }}">
+            </div>
+            <small class="text-muted">支持模糊匹配 Challenge Code</small>
+        </div>
+
+        <!-- 笔记列表 -->
+        {% if grouped_notes %}
+        <div class="section-title">
+            <i class="bi bi-folder"></i> 按挑战分组的笔记
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                {% for challenge in grouped_notes %}
+                <div class="challenge-card">
+                    <div class="challenge-header">
+                        <div>
+                            <div class="challenge-code">
+                                <i class="bi bi-hash"></i> {{ challenge.challenge_code }}
+                            </div>
+                            <div class="challenge-meta">
+                                <i class="bi bi-clock"></i> 最后更新: {{ challenge.latest_update|date:"Y-m-d H:i:s" }}
+                            </div>
+                        </div>
+                        <a href="/notes/{{ challenge.challenge_code }}/" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> 查看全部
+                        </a>
+                    </div>
+
+                    <div class="note-types">
+                        {% if challenge.notes.info %}
+                        <a href="/notes/{{ challenge.challenge_code }}/info/" class="note-type-badge info">
+                            <span class="badge-icon"><i class="bi bi-info-circle"></i></span>
+                            <span>Info</span>
+                        </a>
+                        {% endif %}
+
+                        {% if challenge.notes.infer %}
+                        <a href="/notes/{{ challenge.challenge_code }}/infer/" class="note-type-badge infer">
+                            <span class="badge-icon"><i class="bi bi-lightbulb"></i></span>
+                            <span>Infer</span>
+                        </a>
+                        {% endif %}
+
+                        {% if challenge.notes.result %}
+                        <a href="/notes/{{ challenge.challenge_code }}/result/" class="note-type-badge result">
+                            <span class="badge-icon"><i class="bi bi-check-circle"></i></span>
+                            <span>Result</span>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- 显示最新的笔记预览 -->
+                    {% if challenge.notes.info %}
+                    <div class="note-preview">
+                        <div class="note-preview-text">{{ challenge.notes.info.preview }}</div>
+                    </div>
+                    {% elif challenge.notes.infer %}
+                    <div class="note-preview">
+                        <div class="note-preview-text">{{ challenge.notes.infer.preview }}</div>
+                    </div>
+                    {% elif challenge.notes.result %}
+                    <div class="note-preview">
+                        <div class="note-preview-text">{{ challenge.notes.result.preview }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-journal-x"></i>
+            <h4>暂无笔记</h4>
+            <p class="text-muted">目录: {{ notes_dir }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 刷新按钮 -->
+    <button class="btn btn-primary refresh-btn" onclick="location.reload()">
+        <i class="bi bi-arrow-clockwise"></i> 刷新
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 搜索功能 - 支持回车和防抖
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout = null;
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            const url = new URL(window.location.href);
+
+            if (query) {
+                url.searchParams.set('search', query);
+            } else {
+                url.searchParams.delete('search');
+            }
+
+            window.location.href = url.toString();
+        }
+
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // 防抖搜索
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500);
+        });
+
+        // 自动聚焦搜索框
+        searchInput.focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jupyter Session 列表</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-blue: #0d6efd;
+            --accent-green: #198754;
+            --accent-orange: #fd7e14;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar-brand {
+            color: var(--accent-blue) !important;
+            font-weight: bold;
+        }
+
+        .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue) !important;
+        }
+
+        .stats-bar {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .file-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .file-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .file-name {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.95rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .file-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .file-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.4;
+            color: var(--text-secondary);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .search-box {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .search-input {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 15px;
+            width: 100%;
+            font-size: 0.95rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-journal-code"></i> Jupyter Sessions
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-house"></i> 首页
+                </a>
+                <a class="nav-link" href="/notes/">
+                    <i class="bi bi-journal-text"></i> Notes
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 统计信息 -->
+        <div class="stats-bar">
+            <div class="row">
+                <div class="col-md-4 stat-item">
+                    <div class="stat-value">{{ total_files }}</div>
+                    <div class="stat-label">Session 文件</div>
+                </div>
+                <div class="col-md-4 stat-item">
+                    <div class="stat-value">{{ total_code_cells }}</div>
+                    <div class="stat-label">代码单元格</div>
+                </div>
+                <div class="col-md-4 stat-item">
+                    <div class="stat-value">{% widthratio total_size 1048576 1 %}</div>
+                    <div class="stat-label">总大小 (MB)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="search-box">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchInput" class="search-input" placeholder="搜索 Challenge Code (如: abc123)..." value="{{ search_query|default:'' }}">
+            </div>
+            <small class="text-muted">支持模糊匹配文件名中的 Challenge Code</small>
+        </div>
+
+        <!-- 文件列表 -->
+        {% if error %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> 错误: {{ error }}
+        </div>
+        {% endif %}
+
+        {% if files %}
+        <div class="row">
+            <div class="col-12">
+                {% for file in files %}
+                <div class="file-card" onclick="location.href='/jupyter/{{ file.filename }}/'">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="file-name">
+                                <i class="bi bi-file-earmark-code"></i> {{ file.filename }}
+                            </div>
+                            <div class="file-meta">
+                                <div class="file-meta-item">
+                                    <i class="bi bi-clock"></i>
+                                    <span>{{ file.modified|date:"Y-m-d H:i:s" }}</span>
+                                </div>
+                                <div class="file-meta-item">
+                                    <i class="bi bi-code-square"></i>
+                                    <span>{{ file.code_cells }} 个代码单元格</span>
+                                </div>
+                                <div class="file-meta-item">
+                                    <i class="bi bi-hdd"></i>
+                                    <span>{% widthratio file.size 1024 1 %} KB</span>
+                                </div>
+                                <div class="file-meta-item">
+                                    <i class="bi bi-cpu"></i>
+                                    <span>{{ file.kernel }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-journal-x"></i>
+            <h4>暂无 Jupyter Session 文件</h4>
+            <p class="text-muted">目录: {{ scripts_dir }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 刷新按钮 -->
+    <button class="btn btn-primary refresh-btn" onclick="location.reload()" id="refreshBtn">
+        <i class="bi bi-arrow-clockwise"></i> 刷新
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 搜索功能 - 支持回车和防抖
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout = null;
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            const url = new URL(window.location.href);
+
+            if (query) {
+                url.searchParams.set('search', query);
+            } else {
+                url.searchParams.delete('search');
+            }
+
+            window.location.href = url.toString();
+        }
+
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // 防抖搜索
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500);
+        });
+
+        // 自动聚焦搜索框
+        searchInput.focus();
+    </script>
+</body>
+</html>

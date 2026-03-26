@@ -1,0 +1,1141 @@
+{% load static %}
+{% load time_extras %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF 解题进度看板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --border-color: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-blue: #0d6efd;
+            --accent-green: #198754;
+            --accent-red: #dc3545;
+            --accent-yellow: #ffc107;
+            --accent-orange: #fd7e14;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar-brand {
+            color: var(--accent-blue) !important;
+            font-weight: bold;
+        }
+
+        .stat-card {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .stat-total .stat-number { color: var(--accent-blue); }
+        .stat-started .stat-number { color: #b4890a; }
+        .stat-success .stat-number { color: var(--accent-green); }
+        .stat-fail .stat-number { color: var(--accent-red); }
+
+        .section-title {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .challenge-card {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            cursor: pointer;
+        }
+
+        .challenge-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .challenge-card.started {
+            border-left: 4px solid var(--accent-yellow);
+        }
+
+        .challenge-card.success {
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .challenge-card.fail {
+            border-left: 4px solid var(--accent-red);
+        }
+
+        .challenge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .challenge-code {
+            font-family: 'Monaco', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+        }
+
+        .challenge-target {
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .challenge-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        /* 已完成挑战的 meta 内容靠左对齐 */
+        .challenge-card.success .challenge-meta,
+        .challenge-card.fail .challenge-meta {
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+        }
+
+        .challenge-result-inline {
+            color: var(--accent-green);
+        }
+
+        .challenge-card.fail .challenge-result-inline {
+            color: var(--accent-red);
+        }
+
+        .duration-separator {
+            color: var(--text-secondary);
+            margin: 0 5px;
+        }
+
+        .time-separator {
+            color: var(--text-secondary);
+            margin: 0 5px;
+        }
+
+        .duration-badge,
+        .time-badge,
+        .runtime-badge {
+            color: var(--text-secondary);
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-easy { background-color: #d1e7dd; color: var(--accent-green); }
+        .badge-medium { background-color: #fff3cd; color: var(--accent-orange); }
+        .badge-hard { background-color: #f8d7da; color: var(--accent-red); }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-running { background-color: var(--accent-yellow); }
+        .status-stopped { background-color: var(--text-secondary); }
+
+        /* 快捷跳转按钮 */
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .quick-action-btn {
+            flex: 0 0 auto;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            text-align: center;
+            text-decoration: none !important;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-width: 70px;
+        }
+
+        .quick-action-btn:hover {
+            text-decoration: none !important;
+        }
+
+        .quick-action-btn.notes {
+            background: #0d6efd;
+            color: white !important;
+            border: 1px solid #0d6efd;
+            font-weight: 600;
+        }
+
+        .quick-action-btn.notes:hover {
+            background: #0b5ed7;
+            border-color: #0b5ed7;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(13, 110, 253, 0.3);
+        }
+
+        .quick-action-btn.jupyter {
+            background: #198754;
+            color: white !important;
+            border: 1px solid #198754;
+            font-weight: 600;
+        }
+
+        .quick-action-btn.jupyter:hover {
+            background: #157347;
+            border-color: #157347;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(25, 135, 84, 0.3);
+        }
+
+        /* 移除所有链接下划线 */
+        a {
+            text-decoration: none !important;
+        }
+
+        a:hover {
+            text-decoration: none !important;
+        }
+
+        /* 旋转动画 */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .rotating {
+            animation: spin 1s linear infinite;
+        }
+
+        .challenge-result {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .challenge-result.success {
+            color: var(--accent-green);
+        }
+
+        .challenge-result.fail {
+            color: var(--accent-red);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 20px;
+            padding: 10px;
+        }
+
+        /* 保持导航链接深色文字 */
+        .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-blue) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-trophy"></i> CTF 解题进度看板
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/notes/">
+                    <i class="bi bi-journal-text"></i> Notes
+                </a>
+                <a class="nav-link" href="/jupyter/">
+                    <i class="bi bi-journal-code"></i> Jupyter Sessions
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 统计卡片 -->
+        <div class="row mb-4">
+            <div class="col-12 col-md-3">
+                <div class="stat-card stat-total">
+                    <div class="stat-number">{{ stats.total }}</div>
+                    <div class="stat-label">总挑战数</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="stat-card stat-started">
+                    <div class="stat-number">{{ stats.started }}</div>
+                    <div class="stat-label">运行中</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="stat-card stat-success">
+                    <div class="stat-number">{{ stats.success }}</div>
+                    <div class="stat-label">已完成</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="stat-card stat-fail">
+                    <div class="stat-number">{{ stats.fail }}</div>
+                    <div class="stat-label">已失败</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 额外统计 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stat-card" style="text-align: left;">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div>成功率: <strong style="color: #3fb950;">{{ success_rate }}%</strong></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div>总积分: <strong>{{ stats.total_points }}</strong></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div>已获积分: <strong style="color: #3fb950;">{{ stats.success_points }}</strong></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div>平均时间: <strong>{{ avg_time }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 运行中的挑战 -->
+        <div class="section-title">
+            <i class="bi bi-arrow-repeat"></i> 运行中 ({{ started_challenges|length }})
+        </div>
+        <div class="row">
+            <div class="col-12" id="started-challenges-container">
+                {% if started_challenges %}
+                {% for challenge in started_challenges %}
+                <div class="challenge-card started" data-challenge-code="{{ challenge.challenge_code }}" onclick="location.href='/challenge/{{ challenge.challenge_code }}/'">
+                    <div class="challenge-header">
+                        <div>
+                            <div class="challenge-code">{{ challenge.challenge_code }}</div>
+                            <div class="challenge-target">{{ challenge.target_url }}</div>
+                        </div>
+                        <div>
+                            <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
+                            <span class="badge" style="background-color: #58a6ff;">{{ challenge.points }}pts</span>
+                        </div>
+                    </div>
+                    <div class="challenge-meta">
+                        <span><i class="bi bi-clock"></i> 超时: {{ challenge.timeout_seconds }}s</span>
+                        {% if challenge.started_at %}
+                        <span class="time-separator"> | </span>
+                        <span class="time-badge">
+                            <i class="bi bi-calendar-plus"></i> 开始时间: {{ challenge.started_at|format_local_time_short }}
+                        </span>
+                        <span class="time-separator"> | </span>
+                        <span class="runtime-badge" data-started-at="{{ challenge.started_at }}">
+                            <i class="bi bi-hourglass-split"></i> 已运行: <span class="runtime-text">计算中...</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="challenge-meta">
+                        <span>容器: </span>
+                        {% for container in challenge.containers %}
+                            <span class="status-dot status-running"></span>
+                            {{ container }}
+                        {% empty %}
+                            <span style="color: #f85149;">无容器运行</span>
+                        {% endfor %}
+                    </div>
+                    <!-- 快捷跳转按钮 -->
+                    <div class="quick-actions" onclick="event.stopPropagation()">
+                        <a href="/notes/?search={{ challenge.challenge_code }}" class="quick-action-btn notes">
+                            <i class="bi bi-journal-text"></i> Notes
+                        </a>
+                        <a href="/jupyter/?search={{ challenge.challenge_code }}" class="quick-action-btn jupyter">
+                            <i class="bi bi-journal-code"></i> Jupyter
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="challenge-card">
+                    <div class="empty-state">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>没有运行中的挑战</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 已完成的挑战 -->
+        <div class="section-title">
+            <i class="bi bi-check-circle-fill" style="color: #3fb950;"></i> 已完成 ({{ success_challenges|length }})
+        </div>
+        <div class="row">
+            <div class="col-12" id="success-challenges-container">
+                {% if success_challenges %}
+                {% for challenge in success_challenges %}
+                <div class="challenge-card success" data-challenge-code="{{ challenge.challenge_code }}" onclick="location.href='/challenge/{{ challenge.challenge_code }}/'">
+                    <div class="challenge-header">
+                        <div>
+                            <div class="challenge-code">{{ challenge.challenge_code }}</div>
+                            <div class="challenge-target">{{ challenge.target_url }}</div>
+                        </div>
+                        <div>
+                            <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
+                            <span class="badge" style="background-color: #3fb950;">{{ challenge.points }}pts</span>
+                        </div>
+                    </div>
+                    <div class="challenge-meta">
+                        <span class="challenge-result-inline">
+                            <i class="bi bi-trophy-fill"></i>
+                            {% if challenge.result == 'solved_on_platform' %}
+                                平台确认解决
+                            {% else %}
+                                已完成
+                            {% endif %}
+                        </span>
+                        {% if challenge.updated_at %}
+                        <span class="duration-separator"> | </span>
+                        <span class="time-badge">
+                            <i class="bi bi-calendar-check"></i> 完成时间: {{ challenge.updated_at|format_local_time_short }}
+                        </span>
+                        {% endif %}
+                        {% if challenge.started_at and challenge.updated_at %}
+                        <span class="duration-separator"> | </span>
+                        <span class="duration-badge" data-started-at="{{ challenge.started_at }}" data-updated-at="{{ challenge.updated_at }}">
+                            <i class="bi bi-stopwatch"></i> 运行时长: <span class="duration-text">计算中...</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <!-- 快捷跳转按钮 -->
+                    <div class="quick-actions" onclick="event.stopPropagation()">
+                        <a href="/notes/?search={{ challenge.challenge_code }}" class="quick-action-btn notes">
+                            <i class="bi bi-journal-text"></i> Notes
+                        </a>
+                        <a href="/jupyter/?search={{ challenge.challenge_code }}" class="quick-action-btn jupyter">
+                            <i class="bi bi-journal-code"></i> Jupyter
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="challenge-card">
+                    <div class="empty-state">
+                        <i class="bi bi-trophy"></i>
+                        <p>没有已完成的挑战</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 已失败的挑战 -->
+        <div class="section-title">
+            <i class="bi bi-x-circle-fill" style="color: #f85149;"></i> 已失败 ({{ fail_challenges|length }})
+        </div>
+        <div class="row">
+            <div class="col-12" id="fail-challenges-container">
+                {% if fail_challenges %}
+                {% for challenge in fail_challenges %}
+                <div class="challenge-card fail" onclick="location.href='/challenge/{{ challenge.challenge_code }}/'">
+                    <div class="challenge-header">
+                        <div>
+                            <div class="challenge-code">{{ challenge.challenge_code }}</div>
+                            <div class="challenge-target">{{ challenge.target_url }}</div>
+                        </div>
+                        <div>
+                            <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
+                            <span class="badge" style="background-color: #f85149;">{{ challenge.points }}pts</span>
+                        </div>
+                    </div>
+                    <div class="challenge-meta">
+                        <span class="challenge-result-inline">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            {{ challenge.result|default:"失败" }}
+                        </span>
+                        {% if challenge.updated_at %}
+                        <span class="duration-separator"> | </span>
+                        <span class="time-badge">
+                            <i class="bi bi-calendar-x"></i> 结束时间: {{ challenge.updated_at|format_local_time_short }}
+                        </span>
+                        {% endif %}
+                        {% if challenge.started_at and challenge.updated_at %}
+                        <span class="duration-separator"> | </span>
+                        <span class="duration-badge" data-started-at="{{ challenge.started_at }}" data-updated-at="{{ challenge.updated_at }}">
+                            <i class="bi bi-stopwatch"></i> 运行时长: <span class="duration-text">计算中...</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <!-- 快捷跳转按钮 -->
+                    <div class="quick-actions" onclick="event.stopPropagation()">
+                        <a href="/notes/?search={{ challenge.challenge_code }}" class="quick-action-btn notes">
+                            <i class="bi bi-journal-text"></i> Notes
+                        </a>
+                        <a href="/jupyter/?search={{ challenge.challenge_code }}" class="quick-action-btn jupyter">
+                            <i class="bi bi-journal-code"></i> Jupyter
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="challenge-card">
+                    <div class="empty-state">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <p>没有已失败的挑战</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 最后更新时间 -->
+        <div class="last-updated">
+            <i class="bi bi-clock-history"></i> 最后更新:
+            <span id="last-updated-time">加载中...</span>
+        </div>
+    </div>
+
+    <!-- 刷新按钮 -->
+    <button class="btn btn-primary refresh-btn" onclick="refreshData()" id="refreshBtn">
+        <i class="bi bi-arrow-clockwise"></i> 刷新
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // SSE 实时更新
+        let eventSource = null;
+        let reconnectTimer = null;
+
+        // 更新最后更新时间
+        function updateLastUpdatedTime() {
+            const now = new Date();
+            const el = document.getElementById('last-updated-time');
+            if (el) {
+                el.textContent = now.toLocaleString('zh-CN');
+            }
+        }
+
+        // 将 ISO 格式时间转换为本地时区时间字符串（简短格式: MM-DD HH:MM）
+        function formatLocalTimeShort(isoTimeStr) {
+            if (!isoTimeStr) return '-';
+
+            try {
+                const date = new Date(isoTimeStr);
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${month}-${day} ${hours}:${minutes}`;
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // 将 ISO 格式时间转换为本地时区时间字符串（完整格式: YYYY-MM-DD HH:MM:SS）
+        function formatLocalTime(isoTimeStr) {
+            if (!isoTimeStr) return '-';
+
+            try {
+                const date = new Date(isoTimeStr);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // 计算并格式化运行时间（精确到分钟）
+        function formatRuntime(startedAt) {
+            if (!startedAt) return '未知';
+
+            const start = new Date(startedAt);
+            const now = new Date();
+            const diffMs = now - start;
+
+            if (diffMs < 0) return '未开始';
+
+            const diffSecs = Math.floor(diffMs / 1000);
+            const days = Math.floor(diffSecs / (24 * 3600));
+            const hours = Math.floor((diffSecs % (24 * 3600)) / 3600);
+            const minutes = Math.floor((diffSecs % 3600) / 60);
+
+            if (days > 0) {
+                return `${days}天${hours}小时${minutes}分`;
+            } else if (hours > 0) {
+                return `${hours}小时${minutes}分`;
+            } else {
+                return `${minutes}分钟`;
+            }
+        }
+
+        // 更新所有运行中挑战的已运行时间
+        function updateAllRuntimes() {
+            const runtimeBadges = document.querySelectorAll('.runtime-badge');
+            runtimeBadges.forEach(badge => {
+                const startedAt = badge.dataset.startedAt;
+                if (startedAt) {
+                    const runtimeText = badge.querySelector('.runtime-text');
+                    if (runtimeText) {
+                        runtimeText.textContent = formatRuntime(startedAt);
+                    }
+                }
+            });
+        }
+
+        // 计算并格式化运行时长（已完成挑战，固定时长）
+        function formatDuration(startedAt, updatedAt) {
+            if (!startedAt || !updatedAt) return '未知';
+
+            const start = new Date(startedAt);
+            const end = new Date(updatedAt);
+            const diffMs = end - start;
+
+            if (diffMs < 0) return '无效';
+
+            const diffSecs = Math.floor(diffMs / 1000);
+            const days = Math.floor(diffSecs / (24 * 3600));
+            const hours = Math.floor((diffSecs % (24 * 3600)) / 3600);
+            const minutes = Math.floor((diffSecs % 3600) / 60);
+            const seconds = diffSecs % 60;
+
+            if (days > 0) {
+                return `${days}天${hours}小时${minutes}分${seconds}秒`;
+            } else if (hours > 0) {
+                return `${hours}小时${minutes}分${seconds}秒`;
+            } else if (minutes > 0) {
+                return `${minutes}分${seconds}秒`;
+            } else {
+                return `${seconds}秒`;
+            }
+        }
+
+        // 更新所有已完成挑战的运行时长（只需计算一次，不需要定时更新）
+        function updateAllDurations() {
+            const durationBadges = document.querySelectorAll('.duration-badge');
+            durationBadges.forEach(badge => {
+                const startedAt = badge.dataset.startedAt;
+                const updatedAt = badge.dataset.updatedAt;
+                if (startedAt && updatedAt) {
+                    const durationText = badge.querySelector('.duration-text');
+                    if (durationText) {
+                        durationText.textContent = formatDuration(startedAt, updatedAt);
+                    }
+                }
+            });
+        }
+
+        // 更新统计数据
+        function updateStats(stats) {
+            console.log('[updateStats] 收到统计数据:', stats);
+            const totalEl = document.querySelector('.stat-total .stat-number');
+            const startedEl = document.querySelector('.stat-started .stat-number');
+            const successEl = document.querySelector('.stat-success .stat-number');
+            const failEl = document.querySelector('.stat-fail .stat-number');
+
+            if (totalEl) {
+                totalEl.textContent = stats.total;
+                console.log(`[updateStats] 更新 total: ${stats.total}`);
+            }
+            if (startedEl) {
+                startedEl.textContent = stats.started;
+                console.log(`[updateStats] 更新 started: ${stats.started}`);
+            }
+            if (successEl) {
+                successEl.textContent = stats.success;
+                console.log(`[updateStats] 更新 success: ${stats.success}`);
+            }
+            if (failEl) {
+                failEl.textContent = stats.fail;
+                console.log(`[updateStats] 更新 fail: ${stats.fail}`);
+            }
+        }
+
+        // 从挑战列表计算统计数据
+        function calculateStatsFromChallenges(challenges) {
+            const stats = {
+                total: challenges.length,
+                open: 0,
+                started: 0,
+                success: 0,
+                fail: 0,
+                close: 0,
+                total_points: 0,
+                success_points: 0,
+            };
+
+            challenges.forEach(c => {
+                const state = c.state || 'open';
+                if (stats.hasOwnProperty(state)) {
+                    stats[state]++;
+                }
+                const points = c.points || 0;
+                stats.total_points += points;
+                if (state === 'success') {
+                    stats.success_points += points;
+                }
+            });
+
+            return stats;
+        }
+
+        // 启动 SSE 连接
+        function startSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource('/api/sse/dashboard');
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'dashboard_update' && data.stats) {
+                        updateStats(data.stats);
+                        updateLastUpdatedTime();
+                        // 注意：挑战列表由独立的定时器更新，不再整页刷新
+                    }
+                } catch (e) {
+                    console.error('解析 SSE 数据失败:', e);
+                }
+            };
+
+            eventSource.onerror = function(error) {
+                console.error('SSE 连接错误:', error);
+                eventSource.close();
+
+                // 5秒后重连
+                if (!reconnectTimer) {
+                    reconnectTimer = setTimeout(() => {
+                        reconnectTimer = null;
+                        startSSE();
+                    }, 5000);
+                }
+            };
+
+            console.log('SSE 连接已建立');
+        }
+
+        // 停止 SSE 连接
+        function stopSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        }
+
+        // 获取挑战列表数据
+        async function fetchChallengesList() {
+            try {
+                const response = await fetch('/api/challenges/?limit=100');
+                const data = await response.json();
+                return data.challenges || [];
+            } catch (error) {
+                console.error('获取挑战列表失败:', error);
+                return [];
+            }
+        }
+
+        // 渲染单个挑战卡片 HTML
+        function renderChallengeCard(challenge) {
+            const state = challenge.state || 'open';
+            const stateClass = state;  // open, started, success, fail, close
+            const stateIcon = {
+                'open': 'bi-circle',
+                'started': 'bi-arrow-repeat',
+                'success': 'bi-check-circle-fill',
+                'fail': 'bi-x-circle-fill',
+                'close': 'bi-dash-circle'
+            }[state] || 'bi-circle';
+            const stateText = {
+                'open': '未开始',
+                'started': '运行中',
+                'success': '已完成',
+                'fail': '已失败',
+                'close': '已关闭'
+            }[state] || state;
+
+            // 运行中挑战：显示开始时间和运行时间
+            let runtimeHtml = '';
+            if (state === 'started' && challenge.started_at) {
+                const startTime = formatLocalTimeShort(challenge.started_at);
+                runtimeHtml = `
+                    <span class="time-separator"> | </span>
+                    <span class="time-badge">
+                        <i class="bi bi-calendar-plus"></i> 开始时间: ${startTime}
+                    </span>
+                    <span class="time-separator"> | </span>
+                    <span class="runtime-badge" data-started-at="${challenge.started_at}">
+                        <i class="bi bi-hourglass-split"></i> 已运行: <span class="runtime-text">计算中...</span>
+                    </span>
+                `;
+            }
+
+            // 已完成挑战：显示完成时间和运行时长
+            let successHtml = '';
+            if (state === 'success') {
+                const resultText = challenge.result === 'solved_on_platform' ? '平台确认解决' : '已完成';
+                const completedTime = challenge.updated_at ? formatLocalTimeShort(challenge.updated_at) : '';
+                successHtml = `
+                    <span class="challenge-result-inline">
+                        <i class="bi bi-trophy-fill"></i>
+                        ${resultText}
+                    </span>
+                `;
+                if (completedTime) {
+                    successHtml += `
+                        <span class="duration-separator"> | </span>
+                        <span class="time-badge">
+                            <i class="bi bi-calendar-check"></i> 完成时间: ${completedTime}
+                        </span>
+                    `;
+                }
+                if (challenge.started_at && challenge.updated_at) {
+                    successHtml += `
+                        <span class="duration-separator"> | </span>
+                        <span class="duration-badge" data-started-at="${challenge.started_at}" data-updated-at="${challenge.updated_at}">
+                            <i class="bi bi-stopwatch"></i> 运行时长: <span class="duration-text">计算中...</span>
+                        </span>
+                    `;
+                }
+            }
+
+            // 已失败挑战：显示结束时间和运行时长
+            let failHtml = '';
+            if (state === 'fail') {
+                const resultText = challenge.result || '失败';
+                const endTime = challenge.updated_at ? formatLocalTimeShort(challenge.updated_at) : '';
+                failHtml = `
+                    <span class="challenge-result-inline">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        ${resultText}
+                    </span>
+                `;
+                if (endTime) {
+                    failHtml += `
+                        <span class="duration-separator"> | </span>
+                        <span class="time-badge">
+                            <i class="bi bi-calendar-x"></i> 结束时间: ${endTime}
+                        </span>
+                    `;
+                }
+                if (challenge.started_at && challenge.updated_at) {
+                    failHtml += `
+                        <span class="duration-separator"> | </span>
+                        <span class="duration-badge" data-started-at="${challenge.started_at}" data-updated-at="${challenge.updated_at}">
+                            <i class="bi bi-stopwatch"></i> 运行时长: <span class="duration-text">计算中...</span>
+                        </span>
+                    `;
+                }
+            }
+
+            return `
+                <div class="challenge-card ${stateClass}" data-challenge-code="${challenge.challenge_code}" onclick="location.href='/challenge/${challenge.challenge_code}/'">
+                    <div class="challenge-header">
+                        <div>
+                            <div class="challenge-code">${challenge.challenge_code}</div>
+                            <div class="challenge-target">${challenge.target_url}</div>
+                        </div>
+                        <div>
+                            <span class="badge badge-${challenge.difficulty}">${challenge.difficulty}</span>
+                            <span class="badge" style="background-color: ${state === 'success' ? '#3fb950' : state === 'fail' ? '#f85149' : '#58a6ff'};">${challenge.points}pts</span>
+                        </div>
+                    </div>
+                    ${state === 'started' ? `
+                    <div class="challenge-meta">
+                        <span><i class="bi bi-clock"></i> 超时: ${challenge.timeout_seconds}s</span>
+                        ${runtimeHtml}
+                    </div>
+                    <div class="challenge-meta">
+                        <span>容器: </span>
+                        ${(challenge.containers || []).map(c => `<span class="status-dot status-running"></span>${c}`).join('') || '<span style="color: #f85149;">无容器运行</span>'}
+                    </div>
+                    ` : ''}
+                    ${state === 'success' ? `
+                    <div class="challenge-meta">
+                        ${successHtml}
+                    </div>
+                    ` : ''}
+                    ${state === 'fail' ? `
+                    <div class="challenge-meta">
+                        ${failHtml}
+                    </div>
+                    ` : ''}
+                    <!-- 快捷跳转按钮 -->
+                    <div class="quick-actions" onclick="event.stopPropagation()">
+                        <a href="/notes/?search=${challenge.challenge_code}" class="quick-action-btn notes">
+                            <i class="bi bi-journal-text"></i> Notes
+                        </a>
+                        <a href="/jupyter/?search=${challenge.challenge_code}" class="quick-action-btn jupyter">
+                            <i class="bi bi-journal-code"></i> Jupyter
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 更新挑战列表
+        function updateChallengeList(challenges) {
+            // 按状态分组
+            const started = challenges.filter(c => c.state === 'started');
+            const success = challenges.filter(c => c.state === 'success');
+            const fail = challenges.filter(c => c.state === 'fail');
+            const open = challenges.filter(c => c.state === 'open');
+            const close = challenges.filter(c => c.state === 'close');
+
+            // 更新运行中部分
+            updateSection('started', started, '运行中', 'bi-arrow-repeat');
+
+            // 更新已完成部分
+            updateSection('success', success, '已完成', 'bi-check-circle-fill', '#3fb950');
+
+            // 更新已失败部分
+            updateSection('fail', fail, '已失败', 'bi-x-circle-fill', '#f85149');
+
+            // 重新初始化运行时间和运行时长
+            updateAllRuntimes();
+            updateAllDurations();
+        }
+
+        // 更新单个状态区域
+        function updateSection(state, challenges, title, icon, color = null) {
+            // 使用 ID 直接定位容器
+            const containerId = `${state}-challenges-container`;
+            const col = document.getElementById(containerId);
+
+            if (!col) {
+                console.warn(`[更新区域] 未找到容器: #${containerId}`);
+                return;
+            }
+
+            // 如果没有挑战，显示空状态
+            if (challenges.length === 0) {
+                col.innerHTML = `
+                    <div class="challenge-card">
+                        <div class="empty-state">
+                            <i class="bi bi-hourglass-split"></i>
+                            <p>没有${title}的挑战</p>
+                        </div>
+                    </div>
+                `;
+                console.log(`[更新区域] ${title}: 无挑战，显示空状态`);
+                return;
+            }
+
+            // 渲染挑战卡片
+            col.innerHTML = challenges.map(c => renderChallengeCard(c)).join('');
+            console.log(`[更新区域] ${title}: 已更新 ${challenges.length} 个挑战`);
+        }
+
+        // 定时刷新挑战列表
+        let challengeListRefreshInterval = null;
+
+        function startChallengeListRefresh() {
+            console.log('[Dashboard] 启动挑战列表定时刷新');
+            // 每 5 秒刷新一次挑战列表
+            if (challengeListRefreshInterval) {
+                clearInterval(challengeListRefreshInterval);
+            }
+            challengeListRefreshInterval = setInterval(async () => {
+                const challenges = await fetchChallengesList();
+                console.log(`[刷新] 获取到 ${challenges.length} 个挑战`);
+
+                // 从挑战列表计算统计数据
+                const stats = calculateStatsFromChallenges(challenges);
+                console.log(`[刷新] 统计:`, stats);
+
+                // 更新统计数字
+                updateStats(stats);
+                updateLastUpdatedTime();
+
+                // 更新挑战列表
+                if (challenges.length > 0) {
+                    updateChallengeList(challenges);
+                }
+            }, 5000);
+            // 立即执行一次刷新
+            fetchChallengesList().then(challenges => {
+                console.log(`[初始刷新] 获取到 ${challenges.length} 个挑战`);
+
+                // 从挑战列表计算统计数据
+                const stats = calculateStatsFromChallenges(challenges);
+                updateStats(stats);
+
+                // 更新挑战列表
+                if (challenges.length > 0) {
+                    updateChallengeList(challenges);
+                }
+            });
+        }
+
+        // 手动刷新
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise rotating"></i> 刷新中...';
+            btn.disabled = true;
+
+            try {
+                const challenges = await fetchChallengesList();
+
+                // 从挑战列表计算统计数据
+                const stats = calculateStatsFromChallenges(challenges);
+                updateStats(stats);
+                updateLastUpdatedTime();
+
+                // 更新挑战列表
+                if (challenges.length > 0) {
+                    updateChallengeList(challenges);
+                }
+
+                btn.innerHTML = originalText;
+            } catch (error) {
+                console.error('刷新失败:', error);
+                btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> 刷新失败';
+            }
+
+            btn.disabled = false;
+        }
+
+        // 页面加载时启动 SSE 和运行时间更新
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Dashboard] 页面加载完成');
+            updateLastUpdatedTime();
+            updateAllRuntimes();  // 更新运行中的挑战
+            updateAllDurations();  // 更新已完成的挑战（只需一次）
+            startSSE();
+            startChallengeListRefresh();  // 启动挑战列表自动刷新
+            console.log('[Dashboard] 挑战列表刷新已启动');
+
+            // 每分钟更新一次运行时间
+            setInterval(updateAllRuntimes, 60000);  // 60000ms = 1分钟
+        });
+
+        // 页面卸载时关闭 SSE
+        window.addEventListener('beforeunload', function() {
+            stopSSE();
+            if (challengeListRefreshInterval) {
+                clearInterval(challengeListRefreshInterval);
+            }
+        });
+
+        // 点击刷新按钮
+        document.querySelector('.refresh-btn').addEventListener('click', function() {
+            refreshData();
+        });
+
+        // 添加 SSE 连接状态指示
+        const lastUpdatedDiv = document.querySelector('.last-updated');
+        if (lastUpdatedDiv) {
+            const statusSpan = document.createElement('span');
+            statusSpan.id = 'sse-status';
+            statusSpan.style.marginLeft = '15px';
+            statusSpan.style.fontSize = '12px';
+            statusSpan.style.color = '#3fb950';
+            statusSpan.innerHTML = '<i class="bi bi-wifi"></i> 实时连接';
+            lastUpdatedDiv.appendChild(statusSpan);
+        }
+    </script>
+</body>
+</html>

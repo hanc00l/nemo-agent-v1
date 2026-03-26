@@ -1,0 +1,188 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nemo-agent"
+version = "0.1.0"
+description = "自动化渗透测试 Agent - 基于 Claude 的 sub-agent，实现对指定目标的网络与信息系统进行自动化渗透测试"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Nemo Team"}
+]
+keywords = [
+    "pentest",
+    "security",
+    "agent",
+    "claude",
+    "mcp",
+    "automation",
+    "ctf"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # 核心 MCP 框架
+    "fastmcp>=0.1.0",
+
+    # Python 执行器 (Jupyter)
+    "jupyter-client>=8.0.0",
+    "jupyter-core>=5.0.0",
+    "ipykernel>=6.25.0",
+    "nbformat>=5.9.0",
+
+    # Playwright 浏览器自动化
+    "playwright>=1.40.0",
+
+    # HTTP 请求
+    "requests>=2.28.0",
+
+    # 数据验证
+    "pydantic>=2.0.0",
+
+    # 文档解析
+    "docstring-parser>=0.15",
+
+    # 进程管理
+    "psutil>=5.9.0",
+
+    # Tmux 终端管理
+    "libtmux>=0.12.0",
+
+    # 环境变量管理
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+# 竞赛平台 SDK (可选)
+competition = [
+    "tencent-cloud-hackathon-intelligent-pentest-competition-api-server @ git+https://github.com/tencent-cloud-hackathon-intelligent-pentest-competition-api-server.git@main",
+]
+
+# 开发依赖
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+# 所有依赖
+all = [
+    "nemo-agent[competition,dev]",
+]
+
+[project.scripts]
+# 命令行入口
+pentester = "pentester:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/nemo-agent"
+Repository = "https://github.com/your-org/nemo-agent"
+Documentation = "https://github.com/your-org/nemo-agent/wiki"
+"Bug Tracker" = "https://github.com/your-org/nemo-agent/issues"
+
+[tool.setuptools.packages.find]
+where = ["meta-tooling/toolset/src"]
+include = ["toolset*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | \.eggs
+    | \.tox
+    | build
+    | dist
+    | __pycache__
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+exclude = [
+    '\.venv',
+    'build',
+    'dist',
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "libtmux.*",
+    "playwright.*",
+    "docker.*",
+    "docstring_parser.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--cov=toolset",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.run]
+source = ["meta-tooling/toolset/src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
