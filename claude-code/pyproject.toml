@@ -89,10 +89,10 @@ all = [
 pentester = "pentester:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/nemo-agent"
-Repository = "https://github.com/your-org/nemo-agent"
-Documentation = "https://github.com/your-org/nemo-agent/wiki"
-"Bug Tracker" = "https://github.com/your-org/nemo-agent/issues"
+Homepage = "https://github.com/hanc00l/nemo-agent"
+Repository = "https://github.com/hanc00l/nemo-agent"
+Documentation = "https://github.com/hanc00l/nemo-agent/wiki"
+"Bug Tracker" = "https://github.com/hanc00l/nemo-agent/issues"
 
 [tool.setuptools.packages.find]
 where = ["meta-tooling/toolset/src"]

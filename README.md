@@ -1,5 +1,7 @@
 # Nemo Agent
 
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/hanc00l/nemo-agent)
+
 基于 Claude Code 的自动化渗透测试 Agent，达到中高级网络安全专家水平。
 
 >目前在开发调试中，文档可能不完善。
