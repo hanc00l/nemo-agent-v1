@@ -35,7 +35,8 @@ class Terminal:
     @tool()
     def new_session(self) -> int:
         """创建新终端会话，返回会话ID。"""
-        session = self.server.new_session(attach=False, start_directory="/home/ubuntu/Workspace")
+        workspace_dir = os.getenv("WORKSPACE", "/opt/workspace")
+        session = self.server.new_session(attach=False, start_directory=workspace_dir)
         session.set_option('status', 'off')
         session_id = session.session_id.replace('$', '')
 

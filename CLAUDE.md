@@ -68,7 +68,7 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 - `mcp__reverse__close_session(connection_id)` - 关闭会话
 - `mcp__reverse__list_sessions()` - 列出所有会话
 
-默认监听 IP: 192.168.56.101，NC 默认端口: 10080
+默认监听 IP: 192.168.52.101，NC 默认端口: 10080
 
 ## 安全工具
 

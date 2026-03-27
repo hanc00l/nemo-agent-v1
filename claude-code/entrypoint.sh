@@ -13,6 +13,7 @@ export COMPETITION_API_URL=${COMPETITION_API_URL:-http://host.docker.internal:88
 # export LLM_ID="LLM-1"
 # export NOTE_PATH="/opt/notes"
 # export NOTEBOOK_PATH="/opt/scripts"
+# export WORKSPACE="/opt/workspace"
 
 # docker
 source ~/.myrc
