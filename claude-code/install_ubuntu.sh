@@ -6,7 +6,7 @@
 #   chmod +x install_ubuntu.sh && sudo ./install_ubuntu.sh
 #
 # 安装的组件:
-#   - 系统工具: nmap, whatweb, ffuf, katana
+#   - 系统工具: nmap, whatweb, ffuf, katana, spray, subfinder
 #   - 字典: seclists
 #   - Python 依赖: fastmcp, playwright, libtmux 等
 #   - Web UI: Django, markdown, bleach
@@ -33,7 +33,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THIRDPARTY_DIR="$SCRIPT_DIR/thirdparty"
 
 log_info "=== Ubuntu 24.04 LTS PenTester Agent 环境安装 ==="
-log_info "安装组件: nmap, whatweb, ffuf, katana, seclists"
+log_info "安装组件: nmap, whatweb, ffuf, katana, spray, subfinder, seclists"
 echo ""
 
 # ============================================================================
@@ -120,6 +120,42 @@ if ! command -v katana &> /dev/null; then
     $SUDO chmod +x /usr/local/bin/katana
 else
     log_info "katana 已存在"
+fi
+
+# spray (目录爆破工具)
+if ! command -v spray &> /dev/null; then
+    SPRAY_OFFLINE=$(find "$THIRDPARTY_DIR" -name "spray_linux_amd64*" -type f 2>/dev/null | head -1)
+    if [ -n "$SPRAY_OFFLINE" ]; then
+        $SUDO cp "$SPRAY_OFFLINE" /usr/local/bin/spray
+        $SUDO chmod +x /usr/local/bin/spray
+        log_info "spray 从离线包安装"
+    else
+        wget -q "https://github.com/chainreactors/spray/releases/download/v1.2.6/spray_linux_amd64" -O /tmp/spray_linux_amd64
+        $SUDO cp /tmp/spray_linux_amd64 /usr/local/bin/spray
+        $SUDO chmod +x /usr/local/bin/spray
+        rm -f /tmp/spray_linux_amd64
+        log_info "spray v1.2.6 已安装"
+    fi
+else
+    log_info "spray 已存在"
+fi
+
+# subfinder (子域名发现工具)
+if ! command -v subfinder &> /dev/null; then
+    SUBFINDER_OFFLINE=$(find "$THIRDPARTY_DIR" -name "subfinder_*_linux_amd64.zip" -type f 2>/dev/null | head -1)
+    if [ -n "$SUBFINDER_OFFLINE" ]; then
+        $SUDO unzip -o "$SUBFINDER_OFFLINE" -d /usr/local/bin subfinder 2>/dev/null || true
+        log_info "subfinder 从离线包安装"
+    else
+        VER=$(curl -s https://api.github.com/repos/projectdiscovery/subfinder/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+        wget -q "https://github.com/projectdiscovery/subfinder/releases/download/${VER}/subfinder_${VER#v}_linux_amd64.zip" -O /tmp/subfinder.zip
+        $SUDO unzip -o /tmp/subfinder.zip -d /usr/local/bin subfinder
+        rm -f /tmp/subfinder.zip
+        log_info "subfinder ${VER} 已安装"
+    fi
+    $SUDO chmod +x /usr/local/bin/subfinder
+else
+    log_info "subfinder 已存在"
 fi
 
 # seclists 字典
@@ -223,6 +259,8 @@ echo "  渗透测试工具:"
 echo -n "    nmap:       " && nmap --version 2>/dev/null | head -1 || echo "未安装"
 echo -n "    ffuf:       " && ffuf -V 2>/dev/null | head -1 || echo "未安装"
 echo -n "    katana:     " && katana -version 2>/dev/null | head -1 || echo "未安装"
+echo -n "    spray:      " && spray -h 2>/dev/null | head -1 || echo "未安装"
+echo -n "    subfinder:  " && subfinder -version 2>/dev/null | head -1 || echo "未安装"
 echo -n "    seclists:   " && [ -d "/usr/share/seclists" ] && echo "/usr/share/seclists" || echo "未安装"
 echo ""
 echo "  数据目录:"
