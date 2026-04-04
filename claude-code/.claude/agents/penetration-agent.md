@@ -68,9 +68,9 @@ def identify_zone(target_url, target_info):
 
 | 赛区 | 优先技能 | 工具优先级 |
 |------|----------|-----------|
-| Zone1 | web/* | browser, ffuf, sqlmap |
+| Zone1 | web/* | browser, spray, sqlmap |
 | Zone2 | cve/*, cloud/*, ai-security/* | searchsploit, nuclei |
-| Zone3 | internal/* | frp, chisel, impacket |
+| Zone3 | internal/* | frp, ProxyBridge, impacket |
 
 ---
 
@@ -220,31 +220,14 @@ toolset.note.append_note(
 page = await toolset.browser.get_page()
 await page.goto(target_url)
 content = await page.content()
-```
 
-### 反连工具 (MCP 直接调用)
+# 命令执行
+## 发送命令
+toolset.terminal.send_keys(session_id, "nmap -sV 192.168.1.1", enter=True)
 
-反连工具通过 MCP 工具直接调用，不经过 toolset：
-
-| MCP 工具 | 说明 |
-|----------|------|
-| `mcp__reverse__get_session` | 创建监听 (nc/jndi/msf) |
-| `mcp__reverse__get_output` | 获取终端输出 |
-| `mcp__reverse__send_keys` | 发送命令/按键 |
-| `mcp__reverse__close_session` | 关闭会话 |
-| `mcp__reverse__list_sessions` | 列出所有会话 |
-
-```
-# 示例：创建 nc 监听
-mcp__reverse__get_session(type="nc", port=10080)
-→ {"connection_id": "nc_xxx", "port": 10080, "status": "running"}
-
-# 获取输出
-mcp__reverse__get_output(connection_id="nc_xxx")
-
-# 发送命令
-mcp__reverse__send_keys(connection_id="nc_xxx", keys="whoami", enter=True)
-
-# 关闭会话
-mcp__reverse__close_session(connection_id="nc_xxx")
+## 获取输出 (等待几秒后)
+import time
+time.sleep(5)
+output = toolset.terminal.get_output(session_id)
+print(output)
 ```

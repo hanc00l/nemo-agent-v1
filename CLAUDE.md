@@ -58,17 +58,6 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 
 - `run_command(cmd, timeout)` / `get_output()` / `is_running()`
 
-### Reverse 反连工具 (MCP)
-
-反连工具管理器，支持 nc/jndi/msf 多连接并发：
-
-- `mcp__reverse__get_session(type, port?)` - 创建监听 (nc/jndi/msf)
-- `mcp__reverse__get_output(connection_id)` - 获取终端输出
-- `mcp__reverse__send_keys(connection_id, keys)` - 发送命令
-- `mcp__reverse__close_session(connection_id)` - 关闭会话
-- `mcp__reverse__list_sessions()` - 列出所有会话
-
-默认监听 IP: 192.168.52.101，NC 默认端口: 10080
 
 ## 安全工具
 

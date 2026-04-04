@@ -4,11 +4,6 @@
       "type": "http",
       "url": "http://127.0.0.1:8000/mcp",
       "description": "Python 代码执行器，支持 Jupyter 内核会话管理"
-    },
-    "reverse": {
-      "type": "http",
-      "url": "http://127.0.0.1:8001/mcp",
-      "description": "反连工具管理器，支持 nc/jndi/msf"
     }
   }
 }
