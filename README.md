@@ -223,6 +223,7 @@ API:
 | ffuf | 模糊测试 | `ffuf -u 'http://target/FUZZ' -w wordlist` |
 | katana | 网页爬取 | `katana -u http://target -d 3 -jc` |
 | whatweb | 技术栈识别 | `whatweb -a 3 http://target` |
+| observer_ward | 技术栈 | `observer_ward -t  http://target` |
 
 字典位置：`/usr/share/seclists/Discovery/Web-Content/`
 

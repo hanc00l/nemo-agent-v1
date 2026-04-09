@@ -6,6 +6,8 @@ export VNC_PORT=${VNC_PORT:-5901}
 export BROWSER_PORT=9222
 export MCP_PORT=8000
 export COMPETITION_API_URL=http://192.168.52.1:8888
+export NO_VISION=true
+export REVERSE_IP="47.108.165.130"
 
 # local
 source .venv/bin/activate
