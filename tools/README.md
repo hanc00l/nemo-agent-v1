@@ -2,10 +2,12 @@
 
 此目录包含用于渗透测试的安全工具，支持多架构版本。
 
+**⚠️ 重要**：所有工具必须下载到 `/opt/workspace` 目录下
+
 ## 目录结构
 
 ```
-tools/
+/opt/workspace/
 ├── fscan/                    # 内网综合扫描工具
 │   ├── fscan_amd64           # Linux AMD64
 │   ├── fscan_arm64           # Linux ARM64
@@ -34,16 +36,19 @@ tools/
 
 **下载地址**:
 - GitHub: https://github.com/shadow1ng/fscan/releases
-- 选择对应架构版本下载到 `tools/fscan/` 目录
+- 选择对应架构版本下载到 `/opt/workspace/fscan/` 目录
 
 **使用示例**:
 ```bash
+# 创建目录
+mkdir -p /opt/workspace/fscan
+
 # Linux AMD64
-wget https://github.com/shadow1ng/fscan/releases/download/v1.8.4/fscan_amd64 -O tools/fscan/fscan_amd64
-chmod +x tools/fscan/fscan_amd64
+wget https://github.com/shadow1ng/fscan/releases/download/v1.8.4/fscan_amd64 -O /opt/workspace/fscan/fscan_amd64
+chmod +x /opt/workspace/fscan/fscan_amd64
 
 # Windows AMD64
-wget https://github.com/shadow1ng/fscan/releases/download/v1.8.4/fscan_windows_amd64.exe -O tools/fscan/fscan_windows_amd64.exe
+wget https://github.com/shadow1ng/fscan/releases/download/v1.8.4/fscan_windows_amd64.exe -O /opt/workspace/fscan/fscan_windows_amd64.exe
 ```
 
 ### linpeas
@@ -58,6 +63,8 @@ wget https://github.com/shadow1ng/fscan/releases/download/v1.8.4/fscan_windows_a
 
 **下载地址**: https://github.com/carlospolop/PEASS-ng/releases
 
+**下载到**: `/opt/workspace/linpeas/`
+
 ### mimikatz
 
 **用途**: Windows 凭证提取
@@ -70,12 +77,14 @@ wget https://github.com/shadow1ng/fscan/releases/download/v1.8.4/fscan_windows_a
 
 **下载地址**: https://github.com/gentilkiwi/mimikatz/releases
 
+**下载到**: `/opt/workspace/mimikatz/`
+
 ## 添加新工具
 
 ### 1. 创建工具目录
 
 ```bash
-mkdir -p tools/toolname
+mkdir -p /opt/workspace/toolname
 ```
 
 ### 2. 下载多架构版本
@@ -90,7 +99,7 @@ mkdir -p tools/toolname
 ### 3. 添加可执行权限
 
 ```bash
-chmod +x tools/toolname/*
+chmod +x /opt/workspace/toolname/*
 ```
 
 ### 4. 更新文档
@@ -100,7 +109,7 @@ chmod +x tools/toolname/*
 ## 使用方式
 
 工具会被自动上传到靶机执行，详见：
-- [工具上传技能文档](../claude-code/.claude/skills/pentest/core/tools-upload/SKILL.md)
+- [工具上传技能文档](../claude-code/.claude/skills/pentest/internal/tools-upload/SKILL.md)
 
 ## 安全提示
 

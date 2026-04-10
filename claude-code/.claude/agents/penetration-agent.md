@@ -122,236 +122,6 @@ progress = {
 - **Zone1/Zone2**：完成度评估 → [ctf-workflow 技能](../skills/pentest/core/ctf-workflow/SKILL.md)（详细实现）
 - **Zone3**：递归内网渗透 → [internal 技能](../skills/pentest/internal/SKILL.md)（详细实现）
 
-**下面是完整的实现代码，供参考：**
-
-#### Zone1/Zone2 持续渗透逻辑
-
-```python
-def evaluate_completion_progress(progress, target_info):
-    """
-    Zone1/Zone2 的完成度评估
-
-    完成度评估维度：
-    1. FLAG 数量（可能存在多个 FLAG）
-    2. 场景覆盖率（Web/CVE）
-    3. 攻击链深度（侦察→测试→利用）
-    4. 未尝试的高价值攻击向量
-
-    返回：should_continue, next_scenarios
-    """
-    scenarios_completed = len(progress["scenarios_completed"])
-    flags_count = len(progress["flags_found"])
-
-    # 场景覆盖检查清单
-    scenario_checklist = {
-        "web": ["sqli", "xss", "ssrf", "rce", "file_upload", "auth_bypass"],
-        "cve": ["version_scan", "exploit_db", "cve_2024_xxx"],
-        "cloud": ["metadata_service", "iam_misconfig"]
-    }
-
-    # 判断是否应该继续
-    if flags_count == 0:
-        return True, ["priority_all"]
-
-    # 已有 FLAG，但场景覆盖不足，继续探索
-    if scenarios_completed < 3:  # 至少完成 3 个场景
-        remaining = get_remaining_scenarios(progress, scenario_checklist)
-        return True, remaining
-
-    # 场景覆盖充分，可以停止
-    return False, []
-```
-
-#### Zone3 递归内网渗透逻辑（重要）
-
-```python
-# Zone3 内网资产管理
-internal_network_assets = {
-    "entry_host": {
-        "ip": "192.168.1.10",
-        "access_type": "webshell",  # webshell/ssh/rdp
-        "privilege": "www-data",
-        "compromised": True,
-        "scanned": True,
-        "flag_found": False
-    },
-    "discovered_hosts": [
-        {
-            "ip": "192.168.1.20",
-            "ports": [22, 80, 3306],
-            "services": {"22": "ssh", "80": "http", "3306": "mysql"},
-            "vulnerabilities": ["ssh_weak_cred", "mysql_unauth"],
-            "compromised": False,
-            "compromise_method": None,  # ssh/webshell/rce
-            "flag_found": False,
-            "subnets": ["10.0.0.0/24"]  # 发现的新网段
-        },
-        {
-            "ip": "192.168.1.30",
-            "ports": [80, 8080],
-            "services": {"80": "http", "8080": "tomcat"},
-            "vulnerabilities": ["tomcat_mgr_weak_pass"],
-            "compromised": False,
-            "flag_found": False,
-            "subnets": []
-        }
-    ],
-    "network_segments": [
-        "192.168.1.0/24",  # 当前网段
-        "10.0.0.0/24"      # 新发现的网段
-    ],
-    "compromised_hosts_count": 1,  # 已控制主机数
-    "total_hosts_count": 3,        # 发现的主机总数
-    "penetration_depth": 1         # 渗透深度（跳数）
-}
-
-def recursive_internal_penetration(current_host, internal_assets):
-    """
-    Zone3 递归内网渗透主流程
-
-    流程：
-    1. 当前主机上传 fscan
-    2. 扫描发现新主机和新网段
-    3. 对每个新主机进行渗透
-    4. 如果成功控制新主机，递归调用自身
-    5. 发现新网段，添加到待扫描列表
-    6. 直到所有主机被控制或无进一步进展
-
-    返回：更新的 internal_assets
-    """
-
-    print(f"[*] 正在从 {current_host['ip']} 进行内网扫描...")
-
-    # 1. 上传 fscan 并扫描
-    scan_results = upload_and_run_fscan(current_host['ip'])
-
-    # 2. 分析扫描结果
-    for host_info in scan_results['hosts']:
-        target_ip = host_info['ip']
-
-        # 检查是否已处理过
-        if is_host_compromised(target_ip, internal_assets):
-            print(f"[-] {target_ip} 已控制，跳过")
-            continue
-
-        print(f"[+] 发现新主机: {target_ip}")
-        print(f"    开放端口: {host_info['ports']}")
-        print(f"    服务: {host_info['services']}")
-
-        # 3. 添加到资产列表
-        add_host_to_assets(target_ip, host_info, internal_assets)
-
-        # 4. 尝试渗透该主机
-        compromise_result = try_compromise_host(target_ip, host_info, current_host)
-
-        if compromise_result['success']:
-            print(f"[+] 成功控制 {target_ip}，方式: {compromise_result['method']}")
-
-            # 更新主机状态
-            update_host_status(target_ip, compromised=True, method=compromise_result['method'], assets=internal_assets)
-
-            # 5. 递归：从新主机继续扫描
-            print(f"[*] 从 {target_ip} 继续深入内网...")
-            recursive_internal_penetration(compromise_result['new_host'], internal_assets)
-
-        else:
-            print(f"[-] 无法控制 {target_ip}: {compromise_result['reason']}")
-            # 标记为尝试失败，但不影响其他主机
-
-    # 6. 检查是否发现新网段
-    for subnet in scan_results['subnets']:
-        if subnet not in internal_assets['network_segments']:
-            print(f"[+] 发现新网段: {subnet}")
-            internal_assets['network_segments'].append(subnet)
-            # 扫描新网段
-            scan_new_subnet(subnet, current_host, internal_assets)
-
-    return internal_assets
-
-def try_compromise_host(target_ip, host_info, pivot_host):
-    """
-    尝试控制目标主机
-
-    根据目标主机开放的端口和服务，选择合适的攻击方式
-
-    返回: {
-        'success': True/False,
-        'method': 'ssh/webshell/rce/...',
-        'new_host': host_object,
-        'reason': '...'
-    }
-    """
-
-    # 检查 SSH 弱口令
-    if 22 in host_info['ports']:
-        print(f"[*] 尝试 SSH 弱口令: {target_ip}:22")
-        result = try_ssh_bruteforce(target_ip, pivot_host)
-        if result['success']:
-            return {'success': True, 'method': 'ssh', 'new_host': result['host']}
-
-    # 检查 Web 漏洞
-    if 80 in host_info['ports'] or 443 in host_info['ports'] or 8080 in host_info['ports']:
-        print(f"[*] 尝试 Web 渗透: {target_ip}")
-        result = try_web_exploit(target_ip, host_info['ports'], pivot_host)
-        if result['success']:
-            return {'success': True, 'method': 'webshell', 'new_host': result['host']}
-
-    # 检查其他服务漏洞
-    if 3306 in host_info['ports']:  # MySQL
-        result = try_mysql_exploit(target_ip, pivot_host)
-        if result['success']:
-            return {'success': True, 'method': 'mysql_udf', 'new_host': result['host']}
-
-    if 6379 in host_info['ports']:  # Redis
-        result = try_redis_exploit(target_ip, pivot_host)
-        if result['success']:
-            return {'success': True, 'method': 'redis', 'new_host': result['host']}
-
-    return {'success': False, 'reason': 'no_vulnerability_found'}
-
-# 完整的 Zone3 渗透流程
-def zone3_full_penetration_workflow(entry_host_ip):
-    """
-    Zone3 完整渗透工作流
-    """
-
-    # 1. 控制入口主机
-    print(f"[+] 入口主机: {entry_host_ip}")
-
-    entry_host = {
-        'ip': entry_host_ip,
-        'access_type': 'webshell',
-        'compromised': True
-    }
-
-    # 2. 初始化资产
-    assets = {
-        "entry_host": entry_host,
-        "discovered_hosts": [],
-        "network_segments": ["192.168.1.0/24"],
-        "compromised_hosts_count": 1,
-        "penetration_depth": 1
-    }
-
-    # 3. 开始递归渗透
-    assets = recursive_internal_penetration(entry_host, assets)
-
-    # 4. 评估完成度
-    print(f"\n[+] 内网渗透完成:")
-    print(f"    发现主机: {assets['compromised_hosts_count']} / {assets['total_hosts_count']}")
-    print(f"    渗透深度: {assets['penetration_depth']} 跳")
-    print(f"    网段覆盖: {len(assets['network_segments'])} 个")
-
-    # 5. 决定是否停止
-    # Zone3 停止条件：
-    # - 已扫描所有发现的主机
-    # - 尝试了所有可能的攻击向量
-    # - 无新的网段发现
-    # - 耗时超过 60 分钟
-
-    return assets
-```
-
 ### 场景完成度检查清单
 
 **拿到第一个 FLAG 后，必须检查以下维度再决定是否停止：**
@@ -384,20 +154,34 @@ def zone3_full_penetration_workflow(entry_host_ip):
 | 维度 | 检查项 | 完成标准 |
 |------|--------|----------|
 | **边界突破** | 初始入口 | 已获得目标 shell（WebShell/SSH/RDP） |
-| | 信息收集 | ifconfig/ipconfig、whoami、netstat 等 |
+| **⭐ 信息收集（第一时间）** | 详见 [info-gathering 技能](../skills/pentest/internal/info-gathering/SKILL.md) | 获取 shell 后立即执行 |
+| | Linux 信息收集 | SSH私钥、历史命令、凭证文件、网络信息 |
+| | Windows 信息收集 | 凭证收集、RDP历史、配置文件、网络信息 |
+| | 自动化脚本 | `info_collect_linux.sh` / `info_collect_windows.bat` |
 | **第1跳：内网扫描** | 主机发现 | ⭐ 从入口主机上传 fscan 扫描内网网段 |
 | | 端口扫描 | 发现内网其他主机的开放端口 |
 | | 服务识别 | 识别内网关键服务（SSH/Web/DB/文件服务器） |
-| **第2跳：横向渗透** | SSH 弱口令 | 对发现的主机尝试 SSH 弱口令爆破 |
-| | Web 漏洞 | 对内网 Web 服务进行漏洞利用 |
+| **第2跳：横向渗透** | 利用收集到的凭证 | SSH私钥/密码登录其他主机 |
+| | SSH 弱口令 | 对发现的主机尝试 SSH 弱口令爆破 |
+| | **内网 Web 渗透** | ⭐ **结合 [Zone1 技能](../skills/pentest/web/SKILL.md)** 对内网 Web 服务进行漏洞测试 |
+| | | SQL注入/XSS/RCE/文件上传/反序列化等 |
+| | | OA 系统、中间件（Tomcat/JBoss/WebLogic） |
+| | **内网 CVE 利用** | ⭐ **结合 [Zone2 技能](../skills/pentest/cve/SKILL.md)** 对特定版本服务进行漏洞利用 |
+| | | 识别服务版本 → searchsploit 搜索 POC → nuclei/msf 验证 |
 | | 数据库利用 | MySQL/Redis 未授权/弱口令 |
 | **第3跳+：深入渗透** | 从新主机继续扫描 | ⭐ 递归：从新控制的主机上传 fscan 继续扫描 |
+| | 新主机信息收集 | ⭐ 每控制一个新主机立即进行信息收集 |
 | | 新网段发现 | 发现并扫描新网段（10.x/172.16-31.x） |
 | | 持续深入 | 重复渗透流程，像树状展开 |
 | **权限提升** | 内核漏洞 | LinPEAS/Linux Exploit Suggester |
 | | 弱权限 | SUID/Cron/Path 劫持 |
 | **凭证收集** | 密码哈希 | mimikatz/LaZagne |
 | | 配置文件 | 读取 .ssh/.history/config 等 |
+
+**⚠️ Zone3 渗透要点**：
+- 内网中发现 **Web 服务**（80/443/8080）→ 使用 **Zone1 技能**进行渗透
+- 内网中发现 **特定版本服务** → 使用 **Zone2 技能**进行 CVE 利用
+- 通过代理或端口转发将内网服务映射到本地后测试
 
 **⚠️ Zone3 递归渗透停止条件**：
 1. **内网覆盖率**：已扫描所有发现的主机（100% 覆盖）
@@ -412,29 +196,6 @@ def zone3_full_penetration_workflow(entry_host_ip):
 - ✅ 发现新网段 → 继续扫描
 - ✅ 成功控制新主机 → 递归渗透
 - ✅ 发现新的攻击面 → 继续利用
-
-```python
-# 示例：持续渗透主循环
-while True:
-    flag = try_exploit(current_scenario)
-    if flag:
-        progress["flags_found"].append(flag)
-        progress["scenarios_completed"].append(current_scenario)
-
-        # 立即提交第一个 FLAG
-        if len(progress["flags_found"]) == 1:
-            toolset.competition.submit_answer(challenge_code, flag)
-
-        # 评估是否继续
-        should_continue, next_scenarios = evaluate_completion_progress(progress, target_info)
-        if not should_continue:
-            print("[+] 场景覆盖充分，停止渗透")
-            break
-
-        # 继续下一个场景
-        current_scenario = next_scenarios[0]
-        continue
-```
 
 ---
 
@@ -456,38 +217,39 @@ while True:
 ### 第一赛区 - Web 安全
 | 技能 | 用途 |
 |------|------|
-| [web/](.claude/skills/pentest/web/SKILL.md) | 企业级 Web 漏洞 |
-| [waf-bypass](.claude/skills/pentest/web/waf-bypass.md) | WAF 绕过策略（编码/语法/协议层） |
-| [java-deserialization](.claude/skills/pentest/web/java-deserialization.md) | Java 反序列化 |
-| [spring-boot](.claude/skills/pentest/web/spring-boot.md) | Spring Boot 漏洞 |
-| [shiro](.claude/skills/pentest/web/shiro.md) | Shiro 反序列化 |
-| [fastjson](.claude/skills/pentest/web/fastjson.md) | Fastjson 反序列化 |
-| [oa-systems](.claude/skills/pentest/web/oa-systems/SKILL.md) | OA 系统测试 |
+| [web/](../skills/pentest/web/SKILL.md) | 企业级 Web 漏洞 |
+| [waf-bypass](../skills/pentest/web/waf-bypass.md) | WAF 绕过策略（编码/语法/协议层） |
+| [java-deserialization](../skills/pentest/web/java-deserialization.md) | Java 反序列化 |
+| [spring-boot](../skills/pentest/web/spring-boot.md) | Spring Boot 漏洞 |
+| [shiro](../skills/pentest/web/shiro.md) | Shiro 反序列化 |
+| [fastjson](../skills/pentest/web/fastjson.md) | Fastjson 反序列化 |
+| [oa-systems](../skills/pentest/web/oa-systems/SKILL.md) | OA 系统测试 |
 
 ### 业务逻辑漏洞 (88% 高危)
 | 技能 | 用途 |
 |------|------|
-| [business-logic](.claude/skills/pentest/business-logic/SKILL.md) | 业务逻辑漏洞方法论 |
-| [authentication](.claude/skills/pentest/business-logic/references/authentication.md) | 认证绕过（密码重置88%、弱口令） |
-| [authorization](.claude/skills/pentest/business-logic/references/authorization.md) | 越权访问（IDOR、垂直越权） |
-| [financial](.claude/skills/pentest/business-logic/references/financial.md) | 金融安全（支付68.7%、金额篡改83%） |
-| [logic-flow](.claude/skills/pentest/business-logic/references/logic-flow.md) | 逻辑缺陷（竞态条件74.8%） |
+| [business-logic](../skills/pentest/business-logic/SKILL.md) | 业务逻辑漏洞方法论 |
+| [authentication](../skills/pentest/business-logic/references/authentication.md) | 认证绕过（密码重置88%、弱口令） |
+| [authorization](../skills/pentest/business-logic/references/authorization.md) | 越权访问（IDOR、垂直越权） |
+| [financial](../skills/pentest/business-logic/references/financial.md) | 金融安全（支付68.7%、金额篡改83%） |
+| [logic-flow](../skills/pentest/business-logic/references/logic-flow.md) | 逻辑缺陷（竞态条件74.8%） |
 
 ### 第二赛区 - CVE/云/AI
 | 技能 | 用途 |
 |------|------|
-| [cve/](.claude/skills/pentest/cve/SKILL.md) | CVE 利用方法论 |
-| [cloud/](.claude/skills/pentest/cloud/SKILL.md) | 云安全测试 |
-| [ai-security/](.claude/skills/pentest/ai-security/SKILL.md) | AI 基础设施安全 |
+| [cve/](../skills/pentest/cve/SKILL.md) | CVE 利用方法论 |
+| [cloud/](../skills/pentest/cloud/SKILL.md) | 云安全测试 |
+| [ai-security/](../skills/pentest/ai-security/SKILL.md) | AI 基础设施安全 |
 
 ### 第三赛区 - 内网渗透
 | 技能 | 用途 |
 |------|------|
-| [internal/](.claude/skills/pentest/internal/SKILL.md) | 内网渗透 |
-| [domain-pentest](.claude/skills/pentest/internal/references/domain-pentest.md) | 域渗透（Kerberos/委派/ADCS） |
-| [privilege-escalation](.claude/skills/pentest/internal/references/privilege-escalation.md) | 提权技术（Windows/Linux） |
-| [tunneling](.claude/skills/pentest/internal/tunneling.md) | 隧道建立 |
-| [tools-upload](../skills/pentest/core/tools-upload/SKILL.md) | ⭐ 工具上传（fscan 等）- **仅 Zone3 使用** |
+| [internal/](../skills/pentest/internal/SKILL.md) | 内网渗透 |
+| [info-gathering](../skills/pentest/internal/info-gathering/SKILL.md) | ⭐ Shell 后信息收集（SSH私钥/历史/凭证） |
+| [tools-upload](../skills/pentest/internal/tools-upload/SKILL.md) | ⭐ 工具上传（fscan 等）- **仅 Zone3 使用** |
+| [domain-pentest](../skills/pentest/internal/references/domain-pentest.md) | 域渗透（Kerberos/委派/ADCS） |
+| [privilege-escalation](../skills/pentest/internal/references/privilege-escalation.md) | 提权技术（Windows/Linux） |
+| [tunneling](../skills/pentest/internal/tunneling.md) | 隧道建立 |
 
 ### 核心技能
 | 技能 | 用途 |
@@ -509,7 +271,14 @@ while True:
 6. 漏洞测试 → 根据赛区选择测试类型
    ├─ Zone1 (Web): SQL注入、XSS、RCE、文件上传等
    ├─ Zone2 (CVE/云): 版本检测、CVE利用、元数据服务
-   └─ Zone3 (内网): 工具上传 → fscan 扫描、权限提升、横向移动
+   └─ Zone3 (内网):
+       ├─ ⭐ 信息收集 - [info-gathering 技能](../skills/pentest/internal/info-gathering/SKILL.md)
+       │  └─ 获取 shell 后立即执行：SSH私钥/历史/凭证/网络信息
+       ├─ 凭证利用 → 使用收集到的信息横向移动
+       ├─ 工具上传 → [tools-upload 技能](../skills/pentest/internal/tools-upload/SKILL.md)
+       │  └─ 上传 fscan 进行内网扫描
+       ├─ 权限提升、横向移动
+       └─ 递归渗透（每控制新主机重复上述步骤）
 7. 失败恢复 → 记录失败、调整策略
 8. 漏洞利用 → 获取 FLAG
 9. 提交答案 → submit_answer()（立即提交第一个 FLAG）
@@ -602,4 +371,4 @@ mcp__reverse__close_session(connection_id="nc_xxx")
 2. 需要扫描内网网段（如 192.168.x.x、10.x.x.x）
 3. 需要进行内网资产发现和横向移动
 
-**完整文档**：[tools-upload 技能](../skills/pentest/core/tools-upload/SKILL.md)
+**完整文档**：[tools-upload 技能](../skills/pentest/internal/tools-upload/SKILL.md)
