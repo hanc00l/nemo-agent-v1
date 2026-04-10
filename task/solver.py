@@ -198,6 +198,9 @@ if __name__ == "__main__":
     parser.add_argument('--target', required=True, type=str, help='单个目标 URL 或 IP:端口')
     parser.add_argument('--challenge_code', required=True,type=str, help='题目代码 (code)，用于关联笔记和记录')
     parser.add_argument('--competition', action='store_true', help='启用竞赛模式（解题成功后自动提交答案）')
+    parser.add_argument('--zone', type=int, default=1, choices=[1, 2, 3, 4], help='赛区编号 (1-4)，默认 1')
+    parser.add_argument('--description', type=str, default='', help='赛题描述')
+    parser.add_argument('--hint', type=str, default='', help='提示信息')
 
     args = parser.parse_args()
 
@@ -242,7 +245,8 @@ if __name__ == "__main__":
         print(f"[+] 成功创建 {len(executor.runners)} 个 Runner")
 
         # 5. 构建任务
-        task = build_task_prompt(args.target, args.challenge_code, args.competition)
+        task = build_task_prompt(args.target, args.challenge_code, args.competition,
+                                description=args.description, hint=args.hint, zone=args.zone)
 
         # 6. 并行执行任务
         result = executor.execute_tasks(

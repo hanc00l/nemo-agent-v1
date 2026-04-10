@@ -30,7 +30,7 @@ RUN echo "[3/5] 安装 Metasploit Framework (omnibus)..." && \
 # 4. 安装 Python 包
 RUN echo "[4/5] 安装 Python 包..." && \
     pipx ensurepath && \
-    pipx install --pip-args=--no-cache-dir \
+    pipx install --pip-args=--no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
         "fastmcp>=0.1.0" \
         "jupyter-client>=8.0.0" \
         "jupyter-core>=5.0.0" \
@@ -47,8 +47,7 @@ RUN echo "[4/5] 安装 Python 包..." && \
         "paramiko>=3.0.0" \
         "pyjwt>=2.0.0" \
         "pytest>=7.0.0" \
-        "pytest-asyncio>=0.21.0" \
-        2>/dev/null || true && \
+        "pytest-asyncio>=0.21.0" || true && \
     pipx reinstall-all 2>/dev/null || true
 
 # 5. 创建目录

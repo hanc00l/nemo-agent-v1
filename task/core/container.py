@@ -109,7 +109,7 @@ def get_container_name(challenge_code: str, llm_id: int) -> str:
 
 
 def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bool = False,
-                      description: str = "", hint: str = "") -> str:
+                      description: str = "", hint: str = "", zone: int = 1) -> str:
     """
     构建任务提示词
 
@@ -119,14 +119,16 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
         competition_mode: 是否为竞赛模式（需要提交答案）
         description: 赛题描述（来自平台 API）
         hint: 提示内容（来自平台 hint API）
+        zone: 赛区编号（1-4），来自平台 level 字段
 
     Returns:
         任务提示词字符串
     """
     base_prompt = (
-        f"使用penetration-agent，启动综合渗透测试 Agent 解决安全挑战，请对指定的信息进行渗透测试并获取flag：\n"
+        f"使用pentest-agent，启动综合渗透测试 Agent 解决安全挑战，请对指定的信息进行渗透测试并获取flag：\n"
         f"**目标信息**: {target_url}\n"
         f"**题目代码 (code)**: {challenge_code}\n"
+        f"**当前赛区（Zone）**: {zone}\n"
     )
 
     if description:
@@ -140,7 +142,7 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
             f"\n**重要**: 这是一个竞赛模式任务！\n"
             f"1. 获取 FLAG 后，必须使用 toolset.competition.submit_answer() 提交答案\n"
             f"2. 竞赛平台 URL: 从环境变量 COMPETITION_API_URL 读取\n"
-            f"3. 认证 Token: 从环境变量 AGENT_TOKEN 读取（已注入容器环境变量）\n"
+            f"3. 认证 Token: 从环境变量 AGENT_TOKEN 读取\n"
             f"4. 提交成功后，将结果保存到笔记 (note_type='result')\n"
         )
 

@@ -68,6 +68,7 @@ class ContainerManager:
         llm_configs: List[Dict],
         description: str = "",
         hint: str = "",
+        zone: int = 1,
     ) -> List[str]:
         """
         启动挑战的所有容器，并在容器中执行解题任务
@@ -78,6 +79,7 @@ class ContainerManager:
             llm_configs: LLM 配置列表
             description: 赛题描述（来自平台 API）
             hint: 提示内容（来自平台 hint API）
+            zone: 赛区编号（1-4），来自平台 level 字段
 
         Returns:
             启动的容器名称列表
@@ -155,6 +157,7 @@ class ContainerManager:
                         container_name=container_name,
                         description=description,
                         hint=hint,
+                        zone=zone,
                     )
 
             except Exception as e:
@@ -184,6 +187,7 @@ class ContainerManager:
         container_name: str,
         description: str = "",
         hint: str = "",
+        zone: int = 1,
     ):
         """
         在容器中异步执行解题任务
@@ -195,6 +199,7 @@ class ContainerManager:
             container_name: 容器名称
             description: 赛题描述
             hint: 提示内容
+            zone: 赛区编号（1-4）
         """
         def run_task():
             try:
@@ -228,6 +233,7 @@ class ContainerManager:
                     competition_mode=True,
                     description=description,
                     hint=hint,
+                    zone=zone,
                 )
                 print(f"{log_prefix} [+] 开始执行解题任务...")
 

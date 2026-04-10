@@ -181,6 +181,14 @@
         .badge-easy { background-color: #d1e7dd; color: var(--accent-green); }
         .badge-medium { background-color: #fff3cd; color: var(--accent-orange); }
         .badge-hard { background-color: #f8d7da; color: var(--accent-red); }
+        .badge-zone { background-color: #e0e7ff; color: #4338ca; }
+
+        .challenge-title {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 2px;
+        }
 
         .status-dot {
             width: 8px;
@@ -410,9 +418,11 @@
                     <div class="challenge-header">
                         <div>
                             <div class="challenge-code">{{ challenge.challenge_code }}</div>
+                            {% if challenge.title %}<div class="challenge-title">{{ challenge.title }}</div>{% endif %}
                             <div class="challenge-target">{{ challenge.target_url }}</div>
                         </div>
                         <div>
+                            <span class="badge badge-zone">Zone {{ challenge.level|default:"1" }}</span>
                             <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
                             <span class="badge" style="background-color: #58a6ff;">{{ challenge.points }}pts</span>
                         </div>
@@ -473,9 +483,11 @@
                     <div class="challenge-header">
                         <div>
                             <div class="challenge-code">{{ challenge.challenge_code }}</div>
+                            {% if challenge.title %}<div class="challenge-title">{{ challenge.title }}</div>{% endif %}
                             <div class="challenge-target">{{ challenge.target_url }}</div>
                         </div>
                         <div>
+                            <span class="badge badge-zone">Zone {{ challenge.level|default:"1" }}</span>
                             <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
                             <span class="badge" style="background-color: #3fb950;">{{ challenge.points }}pts</span>
                         </div>
@@ -536,9 +548,11 @@
                     <div class="challenge-header">
                         <div>
                             <div class="challenge-code">{{ challenge.challenge_code }}</div>
+                            {% if challenge.title %}<div class="challenge-title">{{ challenge.title }}</div>{% endif %}
                             <div class="challenge-target">{{ challenge.target_url }}</div>
                         </div>
                         <div>
+                            <span class="badge badge-zone">Zone {{ challenge.level|default:"1" }}</span>
                             <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
                             <span class="badge" style="background-color: #f85149;">{{ challenge.points }}pts</span>
                         </div>
@@ -933,14 +947,19 @@
                 }
             }
 
+            const titleHtml = challenge.title ? `<div class="challenge-title">${challenge.title}</div>` : '';
+            const zone = challenge.level || 1;
+
             return `
                 <div class="challenge-card ${stateClass}" data-challenge-code="${challenge.challenge_code}" onclick="location.href='/challenge/${challenge.challenge_code}/'">
                     <div class="challenge-header">
                         <div>
                             <div class="challenge-code">${challenge.challenge_code}</div>
+                            ${titleHtml}
                             <div class="challenge-target">${challenge.target_url}</div>
                         </div>
                         <div>
+                            <span class="badge badge-zone">Zone ${zone}</span>
                             <span class="badge badge-${challenge.difficulty}">${challenge.difficulty}</span>
                             <span class="badge" style="background-color: ${state === 'success' ? '#3fb950' : state === 'fail' ? '#f85149' : '#58a6ff'};">${challenge.points}pts</span>
                         </div>

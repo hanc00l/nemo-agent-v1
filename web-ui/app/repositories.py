@@ -67,7 +67,10 @@ class ChallengeRepository:
             challenges.append({
                 'challenge_code': challenge_data.get('challenge_code'),
                 'target_url': challenge_data.get('target_url'),
+                'title': challenge_data.get('title', ''),
                 'difficulty': challenge_data.get('difficulty'),
+                'level': challenge_data.get('level', 0),
+                'description': challenge_data.get('description', ''),
                 'points': challenge_data.get('total_score') or 0,
                 'state': challenge_data.get('state'),
                 'fetched_at': challenge_data.get('fetched_at'),

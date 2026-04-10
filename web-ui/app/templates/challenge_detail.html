@@ -472,6 +472,7 @@
                 <div>
                     <i class="bi bi-flag-fill me-2"></i>
                     {{ challenge.challenge_code }}
+                    {% if challenge.title %}<span style="color: var(--text-secondary); font-weight: normal; margin-left: 8px;">{{ challenge.title }}</span>{% endif %}
                 </div>
                 <span class="state-badge state-{{ challenge.state }}">
                     {% if challenge.state == 'open' %}
@@ -488,10 +489,22 @@
                 </span>
             </div>
             <div class="card-body">
+                {% if challenge.description %}
+                <div class="mb-3 p-2" style="background-color: var(--bg-secondary); border-radius: 6px; font-size: 0.9rem;">
+                    <span class="info-label"><i class="bi bi-info-circle me-1"></i>Description:</span>
+                    <span style="color: var(--text-primary);">{{ challenge.description }}</span>
+                </div>
+                {% endif %}
                 <div class="info-grid">
                     <div class="info-item">
                         <span class="info-label">目标地址</span>
                         <span class="info-value">{{ challenge.target_url }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">赛区</span>
+                        <span class="info-value">
+                            <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">Zone {{ challenge.level|default:"1" }}</span>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">难度</span>

@@ -323,6 +323,7 @@ class ChallengeScheduler:
                         llm_configs=self.config.llm_configs,
                         description=challenge.description or "",
                         hint=challenge.hint_content or "",
+                        zone=challenge.level or 1,
                     )
                     self.logger.info(f"重新创建容器成功: {container_names}", "container")
                     self.state_manager.update_state(
@@ -417,6 +418,7 @@ class ChallengeScheduler:
                 llm_configs=self.config.llm_configs,
                 description=challenge.description or "",
                 hint=hint_content,
+                zone=challenge.level or 1,
             )
 
             # 4. 更新状态
