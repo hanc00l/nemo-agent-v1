@@ -11,11 +11,23 @@
 ```
 0. 读取笔记 → note.get_notes_summary(challenge_code)
 1. 手动侦察 → 浏览器访问、源码分析
-2. 主动侦察 → nmap、katana、whatweb
-3. 漏洞测试 → XSS/SQLi/IDOR/SSTI/命令注入
-4. 漏洞利用 → 获取 FLAG
-5. 立即提交 → competition.submit_answer()
-6. 保存结果 → note.append_note("result", flag)
+2. 主动侦察 → nmap、katana、observer_ward、whatweb、fscan
+3. 查询知识库（任何工具识别到应用时）
+   ├─ 识别到应用指纹？
+   │  ├─ observer_ward → "信呼OA"、"泛微OA"
+   │  ├─ whatweb → "Apache Struts"
+   │  ├─ fscan title → "Tomcat"、"Nginx"
+   │  ├─ nuclei → CVE 编号
+   │  ├─ 手动发现 → 页面特征、响应头
+   │  └─ 任何来源？
+   │     ├─ 是 → 查询 vulnerability-wiki
+   │  │  ├─ 找到？ → 获取详情 → 继续测试
+   │  │  └─ 未找到 → 立即跳过
+   │     └─ 否 → 跳过此步骤
+4. 漏洞测试 → XSS/SQLi/IDOR/SSTI/命令注入
+5. 漏洞利用 → 获取 FLAG
+6. 立即提交 → competition.submit_answer()
+7. 保存结果 → note.append_note("result", flag)
 ```
 
 ## 核心概念
@@ -88,6 +100,40 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 | msfconsole | omnibus 安装 | 漏洞利用 | `msfconsole` |
 
 **字典**: `/opt/workspace/SecLists/Discovery/Web-Content/`
+
+### 外部知识库
+
+| 工具 | 来源 | 用途 | 命令 |
+|------|------|------|------|
+| vulnerability-wiki | skill/pentest/vulnerability-wiki | 漏洞知识库（1123+漏洞） | Python API |
+| vulhub | skill/pentest/vulhub | 漏洞复现环境 | Docker 启动 |
+
+**vulnerability-wiki**:
+- 位置: `~/.claude/skills/pentest/vulnerability-wiki/`
+- 功能: 基于 Awesome-POC 的漏洞知识库，支持应用名称和 CVE 搜索
+- 使用场景: observer_ward 识别出应用后，查询相关漏洞
+
+```python
+from vuln_wiki_web import VulnerabilityWikiWebSearch
+
+searcher = VulnerabilityWikiWebSearch(base_url="http://127.0.0.1:3001")
+
+# 按应用搜索（指纹识别后）
+results = searcher.search_by_app("信呼OA", fuzzy=True)
+
+# 按 CVE 搜索
+results = searcher.search_by_cve("CVE-2022-22963")
+
+# 获取详细内容
+detail = searcher.get_vulnerability_detail(results[0]['path'])
+```
+
+**启动服务**:
+```bash
+cd /path/to/Vulnerability-Wiki-master
+docker-compose -f docker-compose-simple.yml up -d
+# 访问 http://127.0.0.1:3001
+```
 
 ## 调度系统
 
