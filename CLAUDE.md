@@ -83,7 +83,6 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 |------|------|------|
 | nmap | 端口扫描 | `nmap -sV -n -T4 --open target` |
 | whatweb | 技术栈识别 | `whatweb -a 3 http://target` |
-| sqlmap | SQL 注入 | `sqlmap -u "http://target/page?id=1" --dbs` |
 | hydra | 暴力破解 | `hydra -l user -P pass.txt target ssh` |
 | hashcat | 密码破解 | `hashcat -m 0 hash.txt wordlist` |
 | proxychains4 | 代理链 | `proxychains4 nmap target` |
@@ -93,6 +92,8 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 
 | 工具 | 来源 | 用途 | 命令 |
 |------|------|------|------|
+| sqlmap | /opt/workspace/sqlmap | SQL 注入 | `python3 /opt/workspace/sqlmap/sqlmap.py -u "http://target/page?id=1" --batch` |
+| xray | /opt/workspace/xray | 被动代理漏洞扫描 | `/opt/workspace/xray/xray webscan --listen 127.0.0.1:7777 --json-output xray.json` |
 | ffuf | /opt/workspace | 模糊测试 | `ffuf -u 'http://target/FUZZ' -w wordlist` |
 | katana | /opt/workspace | 网页爬取 | `katana -u http://target -d 3 -jc` |
 | observer_ward | /opt/workspace | 技术栈识别 | `observer_ward -t http://target` |
