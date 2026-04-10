@@ -8,6 +8,15 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 加载 task/.env 文件中的环境变量
+try:
+    from dotenv import load_dotenv
+    _env_path = BASE_DIR.parent / 'task' / '.env'
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

@@ -69,9 +69,23 @@ class ChallengeStateManager:
             initial_data = {
                 "version": "1.0",
                 "last_updated": datetime.now(timezone.utc).isoformat(),
+                "current_level": 1,
+                "total_challenges": 0,
+                "solved_challenges": 0,
                 "challenges": {}
             }
             self._write_state(initial_data)
+
+    def _default_state(self) -> Dict[str, Any]:
+        """默认状态数据"""
+        return {
+            "version": "1.0",
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "current_level": 1,
+            "total_challenges": 0,
+            "solved_challenges": 0,
+            "challenges": {}
+        }
 
     def _read_state(self) -> Dict[str, Any]:
         """读取状态文件（带锁）"""
@@ -80,11 +94,7 @@ class ChallengeStateManager:
             try:
                 content = f.read()
                 if not content.strip():
-                    return {
-                        "version": "1.0",
-                        "last_updated": datetime.now(timezone.utc).isoformat(),
-                        "challenges": {}
-                    }
+                    return self._default_state()
                 return json.loads(content)
             finally:
                 fcntl.flock(f.fileno(), fcntl.LOCK_UN)
@@ -97,11 +107,7 @@ class ChallengeStateManager:
             f.seek(0)
             content = f.read()
             if not content.strip():
-                return {
-                    "version": "1.0",
-                    "last_updated": datetime.now(timezone.utc).isoformat(),
-                    "challenges": {}
-                }, f
+                return self._default_state(), f
             return json.loads(content), f
         except Exception:
             f.close()
@@ -137,6 +143,46 @@ class ChallengeStateManager:
             return result
         finally:
             f.close()
+
+    def get_global_metadata(self) -> Dict[str, int]:
+        """获取全局元数据（current_level, total_challenges, solved_challenges）"""
+        with self._lock:
+            data = self._read_state()
+            return {
+                "current_level": data.get("current_level", 1),
+                "total_challenges": data.get("total_challenges", 0),
+                "solved_challenges": data.get("solved_challenges", 0),
+            }
+
+    def update_global_metadata(
+        self,
+        current_level: Optional[int] = None,
+        total_challenges: Optional[int] = None,
+        solved_challenges: Optional[int] = None,
+    ) -> Dict[str, int]:
+        """
+        更新全局元数据（原子操作）
+
+        Returns:
+            更新后的全局元数据字典
+        """
+        with self._lock:
+            def updater(data):
+                now = datetime.now(timezone.utc).isoformat()
+                if current_level is not None:
+                    data["current_level"] = current_level
+                if total_challenges is not None:
+                    data["total_challenges"] = total_challenges
+                if solved_challenges is not None:
+                    data["solved_challenges"] = solved_challenges
+                data["last_updated"] = now
+                return {
+                    "current_level": data.get("current_level", 1),
+                    "total_challenges": data.get("total_challenges", 0),
+                    "solved_challenges": data.get("solved_challenges", 0),
+                }
+
+            return self._atomic_update(updater)
 
     def get_all_challenges(self) -> Dict[str, ChallengeStateData]:
         """获取所有挑战"""
@@ -322,6 +368,33 @@ class ChallengeStateManager:
 
                     if is_solved:
                         solved_codes.append(code)
+
+                # 同步已存在挑战的平台字段（包括已完成的挑战）
+                for code in platform_codes - new_codes:
+                    if code in local_challenges:
+                        pc = platform_map[code]
+                        local_c = local_challenges[code]
+                        # 更新平台可能变化的字段
+                        for field_key, platform_key in [
+                            ("title", "title"),
+                            ("description", "description"),
+                            ("difficulty", "difficulty"),
+                            ("level", "level"),
+                            ("total_score", "total_score"),
+                            ("total_got_score", "total_got_score"),
+                            ("flag_count", "flag_count"),
+                            ("flag_got_count", "flag_got_count"),
+                            ("hint_viewed", "hint_viewed"),
+                            ("instance_status", "instance_status"),
+                        ]:
+                            if platform_key in pc:
+                                local_c[field_key] = pc[platform_key]
+                        # 同步 entrypoint
+                        entrypoint = pc.get("entrypoint") or []
+                        local_c["entrypoint"] = entrypoint
+                        if entrypoint:
+                            addr = entrypoint[0]
+                            local_c["target_url"] = addr if addr.startswith("http") else f"http://{addr}"
 
                 # 恢复 close 状态的挑战
                 recovered_codes = []

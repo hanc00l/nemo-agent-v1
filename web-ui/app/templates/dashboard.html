@@ -390,13 +390,13 @@
                 <div class="stat-card" style="text-align: left;">
                     <div class="row">
                         <div class="col-md-3">
-                            <div>成功率: <strong style="color: #3fb950;">{{ success_rate }}%</strong></div>
+                            <div>成功率: <strong style="color: #3fb950;" id="stat-success-rate">{{ success_rate }}%</strong></div>
                         </div>
                         <div class="col-md-3">
-                            <div>总积分: <strong>{{ stats.total_points }}</strong></div>
+                            <div>总积分: <strong id="stat-total-points">{{ stats.total_points }}</strong> / 已获: <strong style="color: #3fb950;" id="stat-success-points">{{ stats.success_points }}</strong></div>
                         </div>
                         <div class="col-md-3">
-                            <div>已获积分: <strong style="color: #3fb950;">{{ stats.success_points }}</strong></div>
+                            <div>Flag 进度: <strong style="color: #3fb950;" id="stat-got-flags">{{ stats.got_flags }}</strong> / <strong id="stat-total-flags">{{ stats.total_flags }}</strong></div>
                         </div>
                         <div class="col-md-3">
                             <div>平均时间: <strong>{{ avg_time }}</strong></div>
@@ -422,9 +422,10 @@
                             <div class="challenge-target">{{ challenge.target_url }}</div>
                         </div>
                         <div>
-                            <span class="badge badge-zone">Zone {{ challenge.level|default:"1" }}</span>
+                            <span class="badge badge-zone">Level {{ challenge.level|default:"0" }}</span>
                             <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
                             <span class="badge" style="background-color: #58a6ff;">{{ challenge.points }}pts</span>
+                            <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">Flags {{ challenge.flag_got_count|default:"0" }}/{{ challenge.flag_count|default:"1" }}</span>
                         </div>
                     </div>
                     <div class="challenge-meta">
@@ -487,9 +488,10 @@
                             <div class="challenge-target">{{ challenge.target_url }}</div>
                         </div>
                         <div>
-                            <span class="badge badge-zone">Zone {{ challenge.level|default:"1" }}</span>
+                            <span class="badge badge-zone">Level {{ challenge.level|default:"0" }}</span>
                             <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
-                            <span class="badge" style="background-color: #3fb950;">{{ challenge.points }}pts</span>
+                            <span class="badge" style="background-color: #3fb950;">{{ challenge.total_got_score|default:"0" }}/{{ challenge.total_score|default:"0" }}pts</span>
+                            <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">Flags {{ challenge.flag_got_count|default:"0" }}/{{ challenge.flag_count|default:"1" }}</span>
                         </div>
                     </div>
                     <div class="challenge-meta">
@@ -552,9 +554,10 @@
                             <div class="challenge-target">{{ challenge.target_url }}</div>
                         </div>
                         <div>
-                            <span class="badge badge-zone">Zone {{ challenge.level|default:"1" }}</span>
+                            <span class="badge badge-zone">Level {{ challenge.level|default:"0" }}</span>
                             <span class="badge badge-{{ challenge.difficulty }}">{{ challenge.difficulty|title }}</span>
-                            <span class="badge" style="background-color: #f85149;">{{ challenge.points }}pts</span>
+                            <span class="badge" style="background-color: #f85149;">{{ challenge.total_got_score|default:"0" }}/{{ challenge.total_score|default:"0" }}pts</span>
+                            <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">Flags {{ challenge.flag_got_count|default:"0" }}/{{ challenge.flag_count|default:"1" }}</span>
                         </div>
                     </div>
                     <div class="challenge-meta">
@@ -614,6 +617,14 @@
         // SSE 实时更新
         let eventSource = null;
         let reconnectTimer = null;
+
+        // XSS 防护: HTML 转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         // 更新最后更新时间
         function updateLastUpdatedTime() {
@@ -738,7 +749,7 @@
             });
         }
 
-        // 更新统计数据
+        // 更新统计数据（含次要统计栏）
         function updateStats(stats) {
             console.log('[updateStats] 收到统计数据:', stats);
             const totalEl = document.querySelector('.stat-total .stat-number');
@@ -746,21 +757,26 @@
             const successEl = document.querySelector('.stat-success .stat-number');
             const failEl = document.querySelector('.stat-fail .stat-number');
 
-            if (totalEl) {
-                totalEl.textContent = stats.total;
-                console.log(`[updateStats] 更新 total: ${stats.total}`);
-            }
-            if (startedEl) {
-                startedEl.textContent = stats.started;
-                console.log(`[updateStats] 更新 started: ${stats.started}`);
-            }
-            if (successEl) {
-                successEl.textContent = stats.success;
-                console.log(`[updateStats] 更新 success: ${stats.success}`);
-            }
-            if (failEl) {
-                failEl.textContent = stats.fail;
-                console.log(`[updateStats] 更新 fail: ${stats.fail}`);
+            if (totalEl) totalEl.textContent = stats.total;
+            if (startedEl) startedEl.textContent = stats.started;
+            if (successEl) successEl.textContent = stats.success;
+            if (failEl) failEl.textContent = stats.fail;
+
+            // 更新次要统计栏
+            const totalPointsEl = document.getElementById('stat-total-points');
+            const successPointsEl = document.getElementById('stat-success-points');
+            const gotFlagsEl = document.getElementById('stat-got-flags');
+            const totalFlagsEl = document.getElementById('stat-total-flags');
+            const successRateEl = document.getElementById('stat-success-rate');
+
+            if (totalPointsEl) totalPointsEl.textContent = stats.total_points || 0;
+            if (successPointsEl) successPointsEl.textContent = stats.success_points || 0;
+            if (gotFlagsEl) gotFlagsEl.textContent = stats.got_flags || 0;
+            if (totalFlagsEl) totalFlagsEl.textContent = stats.total_flags || 0;
+            if (successRateEl) {
+                const finished = (stats.success || 0) + (stats.fail || 0);
+                const rate = finished > 0 ? ((stats.success / finished) * 100).toFixed(1) : '0.0';
+                successRateEl.textContent = rate + '%';
             }
         }
 
@@ -775,6 +791,8 @@
                 close: 0,
                 total_points: 0,
                 success_points: 0,
+                total_flags: 0,
+                got_flags: 0,
             };
 
             challenges.forEach(c => {
@@ -787,6 +805,8 @@
                 if (state === 'success') {
                     stats.success_points += points;
                 }
+                stats.total_flags += c.flag_count || 0;
+                stats.got_flags += c.flag_got_count || 0;
             });
 
             return stats;
@@ -921,7 +941,7 @@
             // 已失败挑战：显示结束时间和运行时长
             let failHtml = '';
             if (state === 'fail') {
-                const resultText = challenge.result || '失败';
+                const resultText = escapeHtml(challenge.result || '失败');
                 const endTime = challenge.updated_at ? formatLocalTimeShort(challenge.updated_at) : '';
                 failHtml = `
                     <span class="challenge-result-inline">
@@ -947,21 +967,30 @@
                 }
             }
 
-            const titleHtml = challenge.title ? `<div class="challenge-title">${challenge.title}</div>` : '';
-            const zone = challenge.level || 1;
+            const titleHtml = challenge.title ? `<div class="challenge-title">${escapeHtml(challenge.title)}</div>` : '';
+            const zone = challenge.level || 0;
+            const flagCount = challenge.flag_count || 1;
+            const flagGot = challenge.flag_got_count || 0;
+            const totalScore = challenge.total_score || 0;
+            const gotScore = challenge.total_got_score || 0;
+            const scoreText = state === 'success' ? `${gotScore}/${totalScore}pts` : `${totalScore}pts`;
+            const safeCode = escapeHtml(challenge.challenge_code);
+            const safeTarget = escapeHtml(challenge.target_url);
+            const safeDiff = escapeHtml(challenge.difficulty);
 
             return `
-                <div class="challenge-card ${stateClass}" data-challenge-code="${challenge.challenge_code}" onclick="location.href='/challenge/${challenge.challenge_code}/'">
+                <div class="challenge-card ${stateClass}" data-challenge-code="${safeCode}" onclick="location.href='/challenge/${encodeURIComponent(challenge.challenge_code)}/'">
                     <div class="challenge-header">
                         <div>
-                            <div class="challenge-code">${challenge.challenge_code}</div>
+                            <div class="challenge-code">${safeCode}</div>
                             ${titleHtml}
-                            <div class="challenge-target">${challenge.target_url}</div>
+                            <div class="challenge-target">${safeTarget}</div>
                         </div>
                         <div>
-                            <span class="badge badge-zone">Zone ${zone}</span>
-                            <span class="badge badge-${challenge.difficulty}">${challenge.difficulty}</span>
-                            <span class="badge" style="background-color: ${state === 'success' ? '#3fb950' : state === 'fail' ? '#f85149' : '#58a6ff'};">${challenge.points}pts</span>
+                            <span class="badge badge-zone">Level ${zone}</span>
+                            <span class="badge badge-${challenge.difficulty}">${safeDiff}</span>
+                            <span class="badge" style="background-color: ${state === 'success' ? '#3fb950' : state === 'fail' ? '#f85149' : '#58a6ff'};">${scoreText}</span>
+                            <span class="badge" style="background-color: #e0e7ff; color: #4338ca;">Flags ${flagGot}/${flagCount}</span>
                         </div>
                     </div>
                     ${state === 'started' ? `

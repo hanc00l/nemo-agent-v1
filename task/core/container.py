@@ -109,7 +109,8 @@ def get_container_name(challenge_code: str, llm_id: int) -> str:
 
 
 def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bool = False,
-                      description: str = "", hint: str = "", zone: int = 1) -> str:
+                      description: str = "", hint: str = "", zone: int = 1,
+                      flag_count: int = 1) -> str:
     """
     构建任务提示词
 
@@ -119,7 +120,8 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
         competition_mode: 是否为竞赛模式（需要提交答案）
         description: 赛题描述（来自平台 API）
         hint: 提示内容（来自平台 hint API）
-        zone: 赛区编号（1-4），来自平台 level 字段
+        zone: 赛区编号（1-4），来自平台 current_level 全局值
+        flag_count: 该赛题的 Flag 总数
 
     Returns:
         任务提示词字符串
@@ -130,6 +132,9 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
         f"**题目代码 (code)**: {challenge_code}\n"
         f"**当前赛区（Zone）**: {zone}\n"
     )
+
+    if flag_count > 1:
+        base_prompt += f"**Flag 数量**: 本题共 {flag_count} 个 Flag，需要全部找到并提交\n"
 
     if description:
         base_prompt += f"**题目描述**: {description}\n"

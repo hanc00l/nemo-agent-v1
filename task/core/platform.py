@@ -92,17 +92,27 @@ class PlatformClient:
             print(f"[ERROR] API 请求失败: {method} {path} - {e}")
             return None
 
-    def fetch_challenges(self, refresh: bool = True) -> Optional[List[Dict]]:
+    def fetch_challenges(self, refresh: bool = True) -> Optional[Dict]:
         """
-        从平台获取赛题列表
+        从平台获取赛题列表（含全局元数据）
 
         Returns:
-            赛题列表，失败时返回 None
+            完整数据字典，包含:
+              - challenges: 赛题列表
+              - current_level: 当前关卡等级
+              - total_challenges: 总赛题数
+              - solved_challenges: 已完成赛题数
+            失败时返回 None
         """
         data = self._request("GET", "/challenges")
         if data is None:
             return None
-        return data.get("challenges", []) if isinstance(data, dict) else []
+        if not isinstance(data, dict):
+            return None
+        # 确保返回的字典包含 challenges 列表
+        if "challenges" not in data:
+            data["challenges"] = []
+        return data
 
     def start_instance(self, code: str) -> Optional[List[str]]:
         """
@@ -165,16 +175,18 @@ class PlatformClient:
 
     def get_unsolved_challenges(self, refresh: bool = True) -> List[Dict]:
         """获取未完成的赛题 (flag_got_count < flag_count)"""
-        challenges = self.fetch_challenges(refresh)
-        if not challenges:
+        data = self.fetch_challenges(refresh)
+        if not data:
             return []
+        challenges = data.get("challenges", [])
         return [c for c in challenges if c.get("flag_got_count", 0) < c.get("flag_count", 1)]
 
     def get_target_url(self, code: str, refresh: bool = True) -> Optional[str]:
         """获取赛题目标 URL"""
-        challenges = self.fetch_challenges(refresh)
-        if not challenges:
+        data = self.fetch_challenges(refresh)
+        if not data:
             return None
+        challenges = data.get("challenges", [])
 
         for c in challenges:
             if c.get("code") == code:

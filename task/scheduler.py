@@ -60,11 +60,23 @@ class ChallengeScheduler:
         # 平台客户端
         self.platform = PlatformClient()
 
+        # 全局元数据跟踪
+        self._global_fetched = False  # 是否已首次获取平台数据
+        saved_metadata = self.state_manager.get_global_metadata()
+        self._current_level: int = self._clamp_level(saved_metadata.get("current_level", 1))
+        self._total_challenges: int = saved_metadata.get("total_challenges", 0)
+        self._solved_challenges: int = saved_metadata.get("solved_challenges", 0)
+
         # 信号处理
         self.running = False
         self._shutdown = GracefulShutdown()
         self._shutdown.register(self._on_shutdown_signal)
         self._shutdown.setup()
+
+    @staticmethod
+    def _clamp_level(level: int) -> int:
+        """将 current_level 限制在 1-4 范围内"""
+        return max(1, min(4, level))
 
     def _acquire_pid_lock(self):
         """获取 PID 文件锁（防止多进程运行）"""
@@ -160,8 +172,8 @@ class ChallengeScheduler:
                 if sync_result["recovered"]:
                     self.logger.info(f"恢复 {len(sync_result['recovered'])} 个挑战", "fetch")
 
-                # 3. 检查已解决的挑战
-                self._check_solved_challenges()
+                # 3. 检查已解决的挑战（复用平台数据）
+                self._check_solved_challenges(platform_challenges)
 
                 # 4. 检查超时
                 self._check_timeouts()
@@ -185,15 +197,65 @@ class ChallengeScheduler:
         self.logger.info("调度器主循环结束", "main")
 
     def _fetch_platform_challenges(self) -> Optional[List[Dict]]:
-        """从平台获取挑战列表（适配新 API 字段）"""
+        """从平台获取挑战列表（适配新 API 字段，含全局元数据跟踪）"""
         try:
             data = self.platform.fetch_challenges()
             if data is None:
                 return None
 
+            # 提取并跟踪全局元数据
+            remote_level = self._clamp_level(data.get("current_level", 1))
+            remote_total = data.get("total_challenges", 0)
+            remote_solved = data.get("solved_challenges", 0)
+
+            if not self._global_fetched:
+                # 首次获取
+                self._current_level = remote_level
+                self._total_challenges = remote_total
+                self._solved_challenges = remote_solved
+                self._global_fetched = True
+                msg = (
+                    f"首次获取平台全局数据: "
+                    f"当前赛区(Zone)={self._current_level}, "
+                    f"总赛题数={self._total_challenges}, "
+                    f"已完成={self._solved_challenges}"
+                )
+                print(f"[+] {msg}")
+                self.logger.info(msg, "fetch")
+                # 持久化到状态文件
+                self.state_manager.update_global_metadata(
+                    current_level=self._current_level,
+                    total_challenges=self._total_challenges,
+                    solved_challenges=self._solved_challenges,
+                )
+            else:
+                # 检测变化
+                changes = []
+                if remote_level != self._current_level:
+                    changes.append(f"赛区(Zone): {self._current_level} -> {remote_level}")
+                    self._current_level = remote_level
+                if remote_total != self._total_challenges:
+                    changes.append(f"总赛题数: {self._total_challenges} -> {remote_total}")
+                    self._total_challenges = remote_total
+                if remote_solved != self._solved_challenges:
+                    changes.append(f"已完成: {self._solved_challenges} -> {remote_solved}")
+                    self._solved_challenges = remote_solved
+
+                if changes:
+                    change_msg = "平台全局数据变化: " + ", ".join(changes)
+                    print(f"[*] {change_msg}")
+                    self.logger.info(change_msg, "fetch")
+                    # 持久化变化
+                    self.state_manager.update_global_metadata(
+                        current_level=self._current_level,
+                        total_challenges=self._total_challenges,
+                        solved_challenges=self._solved_challenges,
+                    )
+
             # 将新 API 字段映射为内部格式
+            raw_challenges = data.get("challenges", [])
             challenges = []
-            for c in data:
+            for c in raw_challenges:
                 challenges.append({
                     "code": c.get("code", ""),
                     "challenge_code": c.get("code", ""),  # 兼容字段
@@ -235,15 +297,54 @@ class ChallengeScheduler:
         except Exception as e:
             self.logger.warn(f"停止平台实例 {challenge_code} 失败: {e}", "cleanup")
 
-    def _check_solved_challenges(self):
-        """检查已解决的挑战"""
+    def _check_solved_challenges(self, platform_challenges: Optional[List[Dict]] = None):
+        """检查已解决的挑战 - 当容器停止时用平台数据确认是否已解题"""
         started = self.state_manager.get_challenges_by_state(STATE_STARTED)
 
         for challenge in started:
             challenge_code = challenge.challenge_code
             statuses = self.container_manager.get_container_status(challenge_code)
-            if not statuses:
-                self.logger.info(f"挑战 {challenge_code} 的容器已停止（等待平台确认或超时）", "check")
+
+            # 检查是否还有运行中的容器
+            has_running = any(s == "running" for s in statuses.values())
+
+            if not statuses or not has_running:
+                # 容器已停止，用已缓存的平台数据确认是否解题
+                self._check_platform_solved(challenge_code, platform_challenges)
+
+    def _check_platform_solved(self, challenge_code: str,
+                                platform_challenges: Optional[List[Dict]] = None):
+        """用平台数据确认挑战是否已解决，若已解决则立即关闭平台实例"""
+        if not platform_challenges:
+            self.logger.info(
+                f"挑战 {challenge_code} 无平台数据（等待重建或超时）",
+                "check"
+            )
+            return
+
+        for c in platform_challenges:
+            if c.get("code") == challenge_code:
+                flag_got = c.get("flag_got_count", 0)
+                flag_total = c.get("flag_count", 1)
+                if flag_got >= flag_total:
+                    self.logger.info(
+                        f"挑战 {challenge_code} 平台确认已解决，立即关闭平台实例",
+                        "check"
+                    )
+                    self._stop_challenge_full(challenge_code)
+                    self.state_manager.update_state(
+                        challenge_code,
+                        STATE_SUCCESS,
+                        result="solved_confirmed_by_platform",
+                        containers=[]
+                    )
+                    return
+
+        # 未解决，容器将被 _maintain_containers 重建
+        self.logger.info(
+            f"挑战 {challenge_code} 尚未解决（容器将由维护流程重建）",
+            "check"
+        )
 
     def _check_timeouts(self):
         """检查超时"""
@@ -323,7 +424,8 @@ class ChallengeScheduler:
                         llm_configs=self.config.llm_configs,
                         description=challenge.description or "",
                         hint=challenge.hint_content or "",
-                        zone=challenge.level or 1,
+                        zone=self._current_level,
+                        flag_count=challenge.flag_count or 1,
                     )
                     self.logger.info(f"重新创建容器成功: {container_names}", "container")
                     self.state_manager.update_state(
@@ -418,7 +520,8 @@ class ChallengeScheduler:
                 llm_configs=self.config.llm_configs,
                 description=challenge.description or "",
                 hint=hint_content,
-                zone=challenge.level or 1,
+                zone=self._current_level,
+                flag_count=challenge.flag_count or 1,
             )
 
             # 4. 更新状态

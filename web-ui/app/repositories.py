@@ -71,6 +71,10 @@ class ChallengeRepository:
                 'difficulty': challenge_data.get('difficulty'),
                 'level': challenge_data.get('level', 0),
                 'description': challenge_data.get('description', ''),
+                'total_score': challenge_data.get('total_score') or 0,
+                'total_got_score': challenge_data.get('total_got_score') or 0,
+                'flag_count': challenge_data.get('flag_count') or 1,
+                'flag_got_count': challenge_data.get('flag_got_count') or 0,
                 'points': challenge_data.get('total_score') or 0,
                 'state': challenge_data.get('state'),
                 'fetched_at': challenge_data.get('fetched_at'),
@@ -130,6 +134,8 @@ class ChallengeRepository:
             'close': 0,
             'total_points': 0,
             'success_points': 0,
+            'total_flags': 0,
+            'got_flags': 0,
         }
 
         for c in all_challenges:
@@ -141,7 +147,10 @@ class ChallengeRepository:
             stats['total_points'] += points
 
             if state == 'success':
-                stats['success_points'] += points
+                stats['success_points'] += c.get('total_got_score') or 0
+
+            stats['total_flags'] += c.get('flag_count') or 0
+            stats['got_flags'] += c.get('flag_got_count') or 0
 
         return stats
 
