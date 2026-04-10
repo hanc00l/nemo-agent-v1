@@ -12,6 +12,15 @@ echo "[*] 开始创建工具 symlink ..."
 # === 信息收集工具 ===
 
 ln -sf "$WORKSPACE/observer_ward/observer_ward" "$TARGET_DIR/observer_ward"
+
+# observer_ward 指纹库软链接
+OW_CONFIG="/home/ubuntu/.config/observer_ward"
+mkdir -p "$OW_CONFIG"
+for _fp in service_fingerprint_v4.json web_fingerprint_v4.json; do
+    if [ -f "$WORKSPACE/observer_ward/$_fp" ]; then
+        ln -sf "$WORKSPACE/observer_ward/$_fp" "$OW_CONFIG/$_fp"
+    fi
+done
 ln -sf "$WORKSPACE/katana/katana"               "$TARGET_DIR/katana"
 ln -sf "$WORKSPACE/ffuf/ffuf"                    "$TARGET_DIR/ffuf"
 ln -sf "$WORKSPACE/fscan/fscan"                  "$TARGET_DIR/fscan"

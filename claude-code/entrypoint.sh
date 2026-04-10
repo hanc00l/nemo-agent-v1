@@ -10,6 +10,12 @@ export COMPETITION_API_URL=${COMPETITION_API_URL:-http://host.docker.internal:88
 # docker
 source ~/.myrc
 
+# 建立工具软链接
+sudo /opt/nemo-agent/claude-code/setup_symlinks.sh
+
+# 初始化msf
+msfdb init
+
 # docker启动VNC
 if [ -z "${NO_VISION}" ]; then
   mkdir -p ~/.vnc && echo 123456 | vncpasswd -f > ~/.vnc/passwd && chmod 600 ~/.vnc/passwd

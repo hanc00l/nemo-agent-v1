@@ -9,13 +9,23 @@ ENV PATH="/root/.local/bin:${PATH}"
 RUN echo "[1/5] 更新系统..." && \
     sudo apt update && sudo apt upgrade -y
 
-# 2. 安装系统工具
-RUN echo "[2/5] 安装系统工具..." && \
-    sudo apt install -y whatweb
+# 2. 安装渗透测试工具 (apt)
+RUN echo "[2/5] 安装渗透测试工具 (apt)..." && \
+    sudo apt install -y \
+        nmap \
+        whatweb \
+        sqlmap \
+        hydra \
+        hashcat \
+        proxychains4 \
+        weevely
 
-# 3. 安装 SecLists
-RUN echo "[3/5] 安装 SecLists..." && \
-    sudo git clone --depth 1 https://github.com/danielmiessler/SecLists.git /usr/share/seclists
+# 3. 安装 Metasploit Framework (omnibus)
+RUN echo "[3/5] 安装 Metasploit Framework (omnibus)..." && \
+    curl -sL "https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb" > /tmp/msfinstall && \
+    chmod 755 /tmp/msfinstall && \
+    /tmp/msfinstall && \
+    rm -f /tmp/msfinstall
 
 # 4. 安装 Python 包
 RUN echo "[4/5] 安装 Python 包..." && \
@@ -34,6 +44,8 @@ RUN echo "[4/5] 安装 Python 包..." && \
         "libtmux>=0.12.0" \
         "python-dotenv>=1.0.0" \
         "requests>=2.28.0" \
+        "paramiko>=3.0.0" \
+        "pyjwt>=2.0.0" \
         "pytest>=7.0.0" \
         "pytest-asyncio>=0.21.0" \
         2>/dev/null || true && \
@@ -41,8 +53,8 @@ RUN echo "[4/5] 安装 Python 包..." && \
 
 # 5. 创建目录
 RUN echo "[5/5] 配置目录..." && \
-    sudo mkdir -p /opt/notes /opt/scripts && \
-    sudo chown ubuntu:ubuntu /opt/notes /opt/scripts
+    sudo mkdir -p /opt/notes /opt/scripts /opt/workspace && \
+    sudo chown ubuntu:ubuntu /opt/notes /opt/scripts /opt/workspace
 
 # 清除旧的文件
 RUN echo "clean..." && \

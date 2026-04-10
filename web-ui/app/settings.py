@@ -2,6 +2,7 @@
 Django settings for web-ui project.
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -37,6 +38,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app.middleware.AuthMiddleware',
 ]
 
 ROOT_URLCONF = 'app.urls'
@@ -65,6 +67,12 @@ WSGI_APPLICATION = 'app.wsgi.application'
 
 DATABASES = {}
 
+# Session 使用文件存储（无数据库）
+SESSION_ENGINE = 'django.contrib.sessions.backends.file'
+SESSION_FILE_PATH = BASE_DIR / '.sessions'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+os.makedirs(SESSION_FILE_PATH, exist_ok=True)
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -77,8 +85,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-import os
-
 JUPYTER_SCRIPTS_DIR = os.getenv('NOTEBOOK_PATH') or '/opt/scripts'
 
 NOTES_DIR = os.getenv('NOTE_PATH') or '/opt/notes'
@@ -88,6 +94,10 @@ NOTES_DIR = os.getenv('NOTE_PATH') or '/opt/notes'
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'app' / 'static']
+
+# Web UI 登录用户名和密码
+WEB_UI_USERNAME = os.getenv('WEB_UI_USERNAME', 'nemo')
+WEB_UI_PASSWORD = os.getenv('WEB_UI_PASSWORD', 'nemo')
 
 
 # Default primary key field type (not used since DB is disabled)

@@ -2,8 +2,13 @@ from django.urls import path
 from . import dashboard_views
 from . import jupyter_views
 from . import notes_views
+from . import auth_views
 
 urlpatterns = [
+    # 认证路由
+    path('login/', auth_views.login_view, name='login'),
+    path('logout/', auth_views.logout_view, name='logout'),
+
     # 页面路由
     path('', dashboard_views.dashboard_page, name='dashboard'),
     path('challenge/<str:challenge_code>/', dashboard_views.challenge_detail_page, name='challenge_detail'),
