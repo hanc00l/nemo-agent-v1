@@ -27,28 +27,28 @@ RUN echo "[3/5] 安装 Metasploit Framework (omnibus)..." && \
     /tmp/msfinstall && \
     rm -f /tmp/msfinstall
 
-# 4. 安装 Python 包
-RUN echo "[4/5] 安装 Python 包..." && \
-    pipx ensurepath && \
-    pipx install --pip-args=--no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
-        "fastmcp>=0.1.0" \
-        "jupyter-client>=8.0.0" \
-        "jupyter-core>=5.0.0" \
-        "ipykernel>=6.25.0" \
-        "nbformat>=5.9.0" \
-        "docker>=7.0.0" \
-        "playwright>=1.40.0" \
-        "pydantic>=2.0.0" \
-        "docstring-parser>=0.15" \
-        "psutil>=5.9.0" \
-        "libtmux>=0.12.0" \
-        "python-dotenv>=1.0.0" \
-        "requests>=2.28.0" \
-        "paramiko>=3.0.0" \
-        "pyjwt>=2.0.0" \
-        "pytest>=7.0.0" \
-        "pytest-asyncio>=0.21.0" || true && \
-    pipx reinstall-all 2>/dev/null || true
+# 4. 安装 Python 包（docker基础镜像已有不需要重复安装）
+# RUN echo "[4/5] 安装 Python 包..." && \
+#     pipx ensurepath && \
+#     pipx install --pip-args=--no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
+#         "fastmcp>=0.1.0" \
+#         "jupyter-client>=8.0.0" \
+#         "jupyter-core>=5.0.0" \
+#         "ipykernel>=6.25.0" \
+#         "nbformat>=5.9.0" \
+#         "docker>=7.0.0" \
+#         "playwright>=1.40.0" \
+#         "pydantic>=2.0.0" \
+#         "docstring-parser>=0.15" \
+#         "psutil>=5.9.0" \
+#         "libtmux>=0.12.0" \
+#         "python-dotenv>=1.0.0" \
+#         "requests>=2.28.0" \
+#         "paramiko>=3.0.0" \
+#         "pyjwt>=2.0.0" \
+#         "pytest>=7.0.0" \
+#         "pytest-asyncio>=0.21.0" || true && \
+#     pipx reinstall-all 2>/dev/null || true
 
 # 5. 创建目录
 RUN echo "[5/5] 配置目录..." && \
