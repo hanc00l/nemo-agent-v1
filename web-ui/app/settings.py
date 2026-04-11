@@ -3,6 +3,7 @@ Django settings for web-ui project.
 """
 
 import os
+import secrets
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -22,12 +23,12 @@ except ImportError:
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-change-this-in-production'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', secrets.token_urlsafe(50))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'false').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -107,6 +108,13 @@ STATICFILES_DIRS = [BASE_DIR / 'app' / 'static']
 # Web UI 登录用户名和密码
 WEB_UI_USERNAME = os.getenv('WEB_UI_USERNAME', 'nemo')
 WEB_UI_PASSWORD = os.getenv('WEB_UI_PASSWORD', 'nemo')
+
+# 安全 headers
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
 
 
 # Default primary key field type (not used since DB is disabled)
