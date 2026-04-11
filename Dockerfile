@@ -7,11 +7,12 @@ ENV PATH="/root/.local/bin:${PATH}"
 
 # 1. 更新系统
 RUN echo "[1/5] 更新系统..." && \
-    sudo apt update && sudo apt upgrade -y
+    sudo apt update 
+#&& sudo apt upgrade -y
 
 # 2. 安装渗透测试工具 (apt)
 RUN echo "[2/5] 安装渗透测试工具 (apt)..." && \
-    sudo apt install -y \
+    sudo apt install -y --fix-missing \
         nmap \
         whatweb \
         sqlmap \
