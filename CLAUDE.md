@@ -11,11 +11,23 @@
 ```
 0. 读取笔记 → note.get_notes_summary(challenge_code)
 1. 手动侦察 → 浏览器访问、源码分析
-2. 主动侦察 → nmap、katana、whatweb
-3. 漏洞测试 → XSS/SQLi/IDOR/SSTI/命令注入
-4. 漏洞利用 → 获取 FLAG
-5. 立即提交 → competition.submit_answer()
-6. 保存结果 → note.append_note("result", flag)
+2. 主动侦察 → nmap、katana、observer_ward、whatweb、fscan
+3. 查询知识库（任何工具识别到应用时）
+   ├─ 识别到应用指纹？
+   │  ├─ observer_ward → "信呼OA"、"泛微OA"
+   │  ├─ whatweb → "Apache Struts"
+   │  ├─ fscan title → "Tomcat"、"Nginx"
+   │  ├─ nuclei → CVE 编号
+   │  ├─ 手动发现 → 页面特征、响应头
+   │  └─ 任何来源？
+   │     ├─ 是 → 查询 vulnerability-wiki
+   │  │  ├─ 找到？ → 获取详情 → 继续测试
+   │  │  └─ 未找到 → 立即跳过
+   │     └─ 否 → 跳过此步骤
+4. 漏洞测试 → XSS/SQLi/IDOR/SSTI/命令注入
+5. 漏洞利用 → 获取 FLAG
+6. 立即提交 → competition.submit_answer()
+7. 保存结果 → note.append_note("result", flag)
 ```
 
 ## 核心概念
@@ -71,7 +83,6 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 |------|------|------|
 | nmap | 端口扫描 | `nmap -sV -n -T4 --open target` |
 | whatweb | 技术栈识别 | `whatweb -a 3 http://target` |
-| sqlmap | SQL 注入 | `sqlmap -u "http://target/page?id=1" --dbs` |
 | hydra | 暴力破解 | `hydra -l user -P pass.txt target ssh` |
 | hashcat | 密码破解 | `hashcat -m 0 hash.txt wordlist` |
 | proxychains4 | 代理链 | `proxychains4 nmap target` |
@@ -81,6 +92,8 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 
 | 工具 | 来源 | 用途 | 命令 |
 |------|------|------|------|
+| sqlmap | /opt/workspace/sqlmap | SQL 注入 | `python3 /opt/workspace/sqlmap/sqlmap.py -u "http://target/page?id=1" --batch` |
+| xray | /opt/workspace/xray | 被动代理漏洞扫描 | `/opt/workspace/xray/xray webscan --listen 127.0.0.1:7777 --json-output xray.json` |
 | ffuf | /opt/workspace | 模糊测试 | `ffuf -u 'http://target/FUZZ' -w wordlist` |
 | katana | /opt/workspace | 网页爬取 | `katana -u http://target -d 3 -jc` |
 | observer_ward | /opt/workspace | 技术栈识别 | `observer_ward -t http://target` |
@@ -88,6 +101,31 @@ Playwright 自动化：页面访问、交互、截图、JS 执行
 | msfconsole | omnibus 安装 | 漏洞利用 | `msfconsole` |
 
 **字典**: `/opt/workspace/SecLists/Discovery/Web-Content/`
+
+### 外部知识库
+
+| 工具 | 来源 | 用途 | 命令 |
+|------|------|------|------|
+| vulnerability-wiki | skill/pentest/vulnerability-wiki | 漏洞知识库（1123+漏洞） | Python API |
+| vulhub | skill/pentest/vulhub | 漏洞复现环境 | Docker 启动 |
+
+**vulnerability-wiki**:
+- 位置: `~/.claude/skills/pentest/vulnerability-wiki/`
+- 功能: 1123 个漏洞知识库，本地文件读取（无需容器/Web 服务）
+- 使用场景: observer_ward 识别出应用后，查询相关漏洞
+
+```python
+# 查询函数定义见: skills/pentest/vulnerability-wiki/SKILL.md
+
+# 按应用模糊搜索（返回所有匹配）
+results = search_by_app("ThinkPHP")  # 返回列表
+
+# 按 CVE 精确搜索
+result = search_by_cve("CVE-2022-22963")  # 返回单条
+
+# 读取漏洞文件
+detail = read_vuln_file("framework/ThinkPHP5-5.0.23-远程代码执行漏洞.md")
+```
 
 ## 调度系统
 
