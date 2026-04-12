@@ -99,6 +99,26 @@ exec java -jar /opt/workspace/shiro/shiro_cli.jar -k /opt/workspace/shiro/shiro_
 EOF
 chmod +x "$TARGET_DIR/shiro_cli"
 
+# ysoserial
+cat > "$TARGET_DIR/ysoserial" << 'EOF'
+#!/bin/bash
+exec java -jar /opt/workspace/ysoserial/ysoserial-all.jar "$@"
+EOF
+chmod +x "$TARGET_DIR/ysoserial"
+
+# marshalsec
+cat > "$TARGET_DIR/marshalsec" << 'EOF'
+#!/bin/bash
+exec java -cp /opt/workspace/marshalsec/marshalsec-all.jar "$@"
+EOF
+chmod +x "$TARGET_DIR/marshalsec"
+
+# docker
+ln -sf "$WORKSPACE/docker/docker" "$TARGET_DIR/docker"
+
+# kubectl
+ln -sf "$WORKSPACE/kubectl/kubectl" "$TARGET_DIR/kubectl"
+
 # === Neo-reGeorg (Python 工具，创建 alias) ===
 if [ -f "$WORKSPACE/Neo-reGeorg/neoreg.py" ]; then
     cat > "$TARGET_DIR/neoreg" << 'EOF'
@@ -119,7 +139,7 @@ echo ""
 echo "[+] Symlink 创建完成，验证结果："
 echo ""
 
-TOOLS="observer_ward katana ffuf fscan nuclei xray frpc frps stowaway_admin stowaway_agent chisel wsh nxc lc cf cloudsword JNDIExploit JYso shiro_cli neoreg"
+TOOLS="observer_ward katana ffuf fscan nuclei xray frpc frps stowaway_admin stowaway_agent chisel wsh nxc lc cf cloudsword JNDIExploit JYso shiro_cli ysoserial marshalsec docker kubectl neoreg"
 
 for tool in $TOOLS; do
     if command -v "$tool" &>/dev/null; then

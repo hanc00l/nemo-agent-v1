@@ -120,6 +120,15 @@ output = toolset.terminal.get_output(sid)
 | JNDIExploit | /opt/workspace/JNDIExploit/ | JNDI 注入利用 |
 | JYso | /opt/workspace/JYso/ | Java 反序列化利用 |
 | shiro_cli | /opt/workspace/shiro/ | Shiro 反序列化 |
+| ysoserial | /opt/workspace/ysoserial/ | Java 原生反序列化 Payload 生成 |
+| marshalsec | /opt/workspace/marshalsec/ | Java Marshalling 漏洞 + JNDI/RMI/LDAP 引导服务 |
+
+### 容器与编排
+
+| 工具 | 来源 | 用途 |
+|------|------|------|
+| docker | /opt/workspace/docker/ | 容器操作（逃逸检测、镜像审计、挂载探测） |
+| kubectl | /opt/workspace/kubectl/ | K8s 集群交互（枚举资源、窃取凭证、提权） |
 
 ### 内网渗透工具
 
