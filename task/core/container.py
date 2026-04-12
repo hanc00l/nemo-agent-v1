@@ -114,6 +114,9 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
     """
     构建任务提示词
 
+    仅包含目标信息，不重复 agent 定义中已有的规则和流程。
+    Agent 行为由 .claude/agents/pentest-agent.md 和 skills/pentest/SKILL.md 定义。
+
     Args:
         target_url: 目标 URL
         challenge_code: 挑战代码
@@ -126,32 +129,39 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
     Returns:
         任务提示词字符串
     """
-    base_prompt = (
-        f"使用pentest-agent，启动综合渗透测试 Agent 解决安全挑战，请对指定的信息进行渗透测试并获取flag：\n"
-        f"**目标信息**: {target_url}\n"
-        f"**题目代码 (code)**: {challenge_code}\n"
-        f"**当前赛区（Zone）**: {zone}\n"
-    )
+    # 从 target_url 提取 IP（用于 nmap 等工具）
+    import re as _re
+    _ip_match = _re.search(r'(\d+\.\d+\.\d+\.\d+)', target_url)
+    _target_ip = _ip_match.group(1) if _ip_match else target_url
+
+    prompt = f"""使用pentest-agent，对以下目标进行渗透测试，获取 flag。
+
+## 目标信息
+
+- 目标 URL: {target_url}
+- 目标 IP: {_target_ip}
+- 题目代码: {challenge_code}
+- 赛区: Zone {zone}
+"""
 
     if flag_count > 1:
-        base_prompt += f"**Flag 数量**: 本题共 {flag_count} 个 Flag，需要全部找到并提交\n"
+        prompt += f"- Flag 数量: {flag_count} 个，需全部找到并提交\n"
 
     if description:
-        base_prompt += f"**题目描述**: {description}\n"
+        prompt += f"- 题目描述: {description}\n"
 
     if hint:
-        base_prompt += f"**提示信息**: {hint}\n"
+        prompt += f"- 提示信息: {hint}\n"
 
     if competition_mode:
-        base_prompt += (
-            f"\n**重要**: 这是一个竞赛模式任务！\n"
-            f"1. 获取 FLAG 后，必须使用 toolset.competition.submit_answer() 提交答案\n"
-            f"2. 竞赛平台 URL: 从环境变量 COMPETITION_API_URL 读取\n"
-            f"3. 认证 Token: 从环境变量 AGENT_TOKEN 读取\n"
-            f"4. 提交成功后，将结果保存到笔记 (note_type='result')\n"
-        )
+        prompt += f"""
+## 竞赛模式（已启用）
 
-    return base_prompt
+- 获取 FLAG 后必须调用: toolset.competition.submit_answer(challenge_code="{challenge_code}", answer=flag)
+- 确认返回 correct=True 才算完成
+"""
+
+    return prompt
 
 
 def prepare_container_config(
