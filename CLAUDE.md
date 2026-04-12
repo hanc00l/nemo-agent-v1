@@ -24,8 +24,12 @@
    │     │  ├─ 找到？ → 获取详情 → 继续测试
    │     │  └─ 未找到 → nuclei 扫描 → WebSearch 兜底
    │     └─ 否 → 跳过此步骤
-4. 漏洞测试 → XSS/SQLi/IDOR/SSTI/命令注入
+4. 漏洞测试 → XSS/SQLi/IDOR/SSTI/命令注入/SSRF
 5. 漏洞利用 → 获取 FLAG
+   ├─ SSRF 确认？ → cloud/ssrf-to-cloud + metadata-service → 云凭证
+   ├─ 云指标命中？ → cloud/ 技能（容器/存储桶/AK利用）
+   ├─ AI 指标命中？ → ai-security/ 技能（提示注入/LLM API）
+   └─ 常规 Web 利用
 6. 立即提交 → competition.submit_answer()
 7. 保存结果 → note.append_note("result", flag)
 ```
@@ -94,6 +98,7 @@ output = toolset.terminal.get_output(sid)
 | katana | /opt/workspace | 网页爬取 | `katana -u http://target -d 3 -jc` |
 | ffuf | /opt/workspace | 目录发现/模糊测试 | `ffuf -u 'http://target/FUZZ' -w wordlist` |
 | fscan | /opt/workspace | 内网综合扫描 | `fscan -h 10.10.1.0/24` |
+| lc | /opt/workspace/lc | 多云攻击面资产梳理 | `lc -ep -s` |
 
 ### 漏洞利用
 
@@ -105,6 +110,8 @@ output = toolset.terminal.get_output(sid)
 | msfconsole | apt (omnibus) | 漏洞利用框架 | `msfconsole` |
 | hydra | apt | 暴力破解 | `hydra -l user -P pass.txt target ssh` |
 | hashcat | apt | 密码破解 | `hashcat -m 0 hash.txt wordlist` |
+| cloudsword | /opt/workspace/cloudsword | 云安全综合测试 | `cloudsword` |
+| cf | /opt/workspace/cf | 云环境利用框架 | `cf` |
 
 ### Java 反序列化
 
@@ -204,8 +211,15 @@ detail = read_vuln_file("framework/ThinkPHP5-5.0.23-远程代码执行漏洞.md"
 - [jndi-exploit](claude-code/.claude/skills/pentest/reverse/jndi-exploit.md) — JNDI 注入利用
 - [vulnerability-wiki](claude-code/.claude/skills/pentest/vulnerability-wiki/SKILL.md) — 漏洞知识库
 - [vulhub](claude-code/.claude/skills/pentest/vulhub/SKILL.md) — 漏洞环境知识库
-- [cloud/](claude-code/.claude/skills/pentest/cloud/SKILL.md) — 云安全
-- [ai-security/](claude-code/.claude/skills/pentest/ai-security/SKILL.md) — AI 基础设施安全
+- [cloud/](claude-code/.claude/skills/pentest/cloud/SKILL.md) — 云安全总览
+- [metadata-service](claude-code/.claude/skills/pentest/cloud/metadata-service.md) — 云元数据服务利用
+- [storage-security](claude-code/.claude/skills/pentest/cloud/storage-security.md) — 对象存储安全测试
+- [container-security](claude-code/.claude/skills/pentest/cloud/container-security.md) — 容器与 K8s 安全
+- [ssrf-to-cloud](claude-code/.claude/skills/pentest/cloud/ssrf-to-cloud.md) — SSRF 到云攻击链
+- 工具: [lc](claude-code/.claude/skills/pentest/cloud/tools/lc.md) / [cloudsword](claude-code/.claude/skills/pentest/cloud/tools/cloudsword.md) / [cf](claude-code/.claude/skills/pentest/cloud/tools/cf.md) — 多云资产梳理 / 云安全综合测试 / 云环境利用框架
+- [ai-security/](claude-code/.claude/skills/pentest/ai-security/SKILL.md) — AI 安全总览
+- [prompt-injection](claude-code/.claude/skills/pentest/ai-security/prompt-injection.md) — 提示词注入攻击
+- [llm-api](claude-code/.claude/skills/pentest/ai-security/llm-api.md) — LLM API 安全测试
 
 ### 内网渗透（Zone 3）
 - [internal/](claude-code/.claude/skills/pentest/internal/SKILL.md) — 内网渗透总览

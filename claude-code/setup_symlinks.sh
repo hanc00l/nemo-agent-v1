@@ -51,6 +51,23 @@ fi
 # NetExec (nxc)
 ln -sf "$WORKSPACE/NetExec/nxc"                    "$TARGET_DIR/nxc"
 
+# === 云安全工具 ===
+
+# lc (多云攻击面资产梳理)
+if [ -f "$WORKSPACE/lc/lc" ]; then
+    ln -sf "$WORKSPACE/lc/lc" "$TARGET_DIR/lc"
+fi
+
+# cf (云函数利用)
+if [ -f "$WORKSPACE/cf/cf" ]; then
+    ln -sf "$WORKSPACE/cf/cf" "$TARGET_DIR/cf"
+fi
+
+# CloudSword (云安全综合测试)
+if [ -f "$WORKSPACE/cloudsword/cloudsword" ]; then
+    ln -sf "$WORKSPACE/cloudsword/cloudsword" "$TARGET_DIR/cloudsword"
+fi
+
 # === 漏洞利用工具 ===
 
 # wsh (直接二进制)
@@ -102,7 +119,7 @@ echo ""
 echo "[+] Symlink 创建完成，验证结果："
 echo ""
 
-TOOLS="observer_ward katana ffuf fscan nuclei xray frpc frps stowaway_admin stowaway_agent chisel wsh nxc JNDIExploit JYso shiro_cli neoreg"
+TOOLS="observer_ward katana ffuf fscan nuclei xray frpc frps stowaway_admin stowaway_agent chisel wsh nxc lc cf cloudsword JNDIExploit JYso shiro_cli neoreg"
 
 for tool in $TOOLS; do
     if command -v "$tool" &>/dev/null; then
