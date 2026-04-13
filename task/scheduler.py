@@ -68,6 +68,14 @@ class ChallengeScheduler:
         # 平台客户端
         self.platform = PlatformClient()
 
+        # 题目黑名单
+        self._blacklist = self._load_blacklist()
+        if self._blacklist:
+            self.logger.info(
+                f"已加载题目黑名单 ({len(self._blacklist)} 个): {', '.join(sorted(self._blacklist))}",
+                "init"
+            )
+
         # 全局元数据跟踪
         self._global_fetched = False  # 是否已首次获取平台数据
         saved_metadata = self.state_manager.get_global_metadata()
@@ -85,6 +93,24 @@ class ChallengeScheduler:
     def _clamp_level(level: int) -> int:
         """将 current_level 限制在 1-4 范围内"""
         return max(1, min(4, level))
+
+    @staticmethod
+    def _load_blacklist() -> set:
+        """加载题目黑名单（每行一个题目代码）"""
+        blacklist_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "subject_black.txt"
+        )
+        codes = set()
+        try:
+            with open(blacklist_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    code = line.strip()
+                    if code and not code.startswith("#"):
+                        codes.add(code)
+        except FileNotFoundError:
+            pass
+        return codes
 
     def _acquire_pid_lock(self):
         """获取 PID 文件锁（防止多进程运行）"""
@@ -480,6 +506,9 @@ class ChallengeScheduler:
 
         # 3. 获取所有失败的题目
         failed_challenges = self.state_manager.get_challenges_by_state(STATE_FAIL)
+        # 过滤黑名单题目
+        if self._blacklist:
+            failed_challenges = [c for c in failed_challenges if c.challenge_code not in self._blacklist]
         if not failed_challenges:
             return
 
@@ -536,6 +565,9 @@ class ChallengeScheduler:
             return
 
         open_challenges = self.state_manager.get_challenges_by_state(STATE_OPEN)
+        # 过滤黑名单题目
+        if self._blacklist:
+            open_challenges = [c for c in open_challenges if c.challenge_code not in self._blacklist]
         open_challenges.sort(key=lambda c: (_difficulty_order(c.difficulty), c.fetched_at))
 
         for challenge in open_challenges:
