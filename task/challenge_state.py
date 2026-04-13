@@ -441,6 +441,24 @@ class ChallengeStateManager:
 
             return self._atomic_update(updater)
 
+    def reset_retry_for_non_success(self) -> int:
+        """将所有非 success 状态的挑战 retry_num 重置为 0（原子操作）
+
+        Returns:
+            重置的挑战数量
+        """
+        with self._lock:
+            def updater(data):
+                count = 0
+                for code, c in data.get("challenges", {}).items():
+                    if c.get("state") != "success" and c.get("retry_num", 0) != 0:
+                        c["retry_num"] = 0
+                        count += 1
+                if count:
+                    data["last_updated"] = datetime.now(timezone.utc).isoformat()
+                return count
+            return self._atomic_update(updater)
+
     def cleanup_old_challenges(self, max_age_hours: int = 24):
         """清理旧的已完成挑战（原子操作）"""
         with self._lock:

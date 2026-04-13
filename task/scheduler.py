@@ -715,6 +715,11 @@ def main():
         action="store_true",
         help="只运行一次循环然后退出"
     )
+    parser.add_argument(
+        "--reset-retry",
+        action="store_true",
+        help="重置所有非 success 试题的 retry_num 为 0"
+    )
 
     args = parser.parse_args()
 
@@ -739,6 +744,22 @@ def main():
     print(f"    - LLM 数量: {len(config.llm_configs)}")
     print(f"    - 状态文件: {config.STATE_FILE}")
     print(f"    - 日志文件: {config.LOG_FILE}")
+
+    # 处理 --reset-retry 参数
+    if args.reset_retry:
+        print(f"[!] --reset-retry 将重置所有非 success 试题的 retry_num 为 0")
+        confirm = input("[?] 确认执行？(y/N): ").strip().lower()
+        if confirm != "y":
+            print("[-] 已取消重置，退出")
+            sys.exit(0)
+        state_manager = ChallengeStateManager(
+            config.STATE_FILE,
+            default_timeout=config.TIMEOUT_SECONDS
+        )
+        count = state_manager.reset_retry_for_non_success()
+        print(f"[+] 已重置 {count} 个非 success 试题的 retry_num 为 0")
+        scheduler_logger = SchedulerLogger("scheduler", config.LOG_FILE)
+        scheduler_logger.info(f"--reset-retry: 重置了 {count} 个非 success 试题的 retry_num", "init")
 
     # 创建调度器
     scheduler = ChallengeScheduler(config)
