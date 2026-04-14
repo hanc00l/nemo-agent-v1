@@ -10,6 +10,13 @@ from typing import List, Dict, Any
 # 导入核心模块
 from core import load_llm_configs, to_dict_list
 
+# 分区超时倍率：Zone 1/2 = 50%, Zone 3/4 = 300%
+ZONE_TIMEOUT_RATIOS = {1: 0.5, 2: 0.5, 3: 3.0, 4: 3.0}
+
+# 分区并行槽位：Zone 3/4 = 2 个, Zone 1/2 = 1 个
+ZONE_HIGH_PARALLEL = 2  # Zone 3/4
+ZONE_LOW_PARALLEL = 1   # Zone 1/2
+
 
 @dataclass
 class SchedulerConfig:
@@ -17,8 +24,9 @@ class SchedulerConfig:
 
     # Scheduler settings
     FETCH_INTERVAL: int = 60          # Platform fetch interval (seconds)
-    MAX_PARALLEL: int = 3             # Max concurrent challenges
-    TIMEOUT_SECONDS: int = 3600       # Per-challenge timeout
+    MAX_PARALLEL: int = 3             # Max concurrent challenges (固定为 3)
+    BASE_TIMEOUT_SECONDS: int = 3600  # 基础超时时间（分区按倍率调整）
+    TIMEOUT_SECONDS: int = 3600       # Per-challenge timeout (兼容旧字段)
 
     # Platform settings
     COMPETITION_API_URL: str = "http://host.docker.internal"
@@ -42,12 +50,17 @@ class SchedulerConfig:
 
     def __post_init__(self):
         """验证配置"""
-        if self.MAX_PARALLEL < 1:
-            raise ValueError("MAX_PARALLEL must be at least 1")
+        # MAX_PARALLEL 强制为 3（分区调度需要 2+1=3）
+        if self.MAX_PARALLEL != 3:
+            import warnings
+            warnings.warn(
+                f"MAX_PARALLEL={self.MAX_PARALLEL} 被强制设为 3（分区调度策略需要）"
+            )
+            object.__setattr__(self, 'MAX_PARALLEL', 3)
         if self.MAX_LLM < 1 or self.MAX_LLM > 3:
             raise ValueError("MAX_LLM must be between 1 and 3")
-        if self.TIMEOUT_SECONDS < 60:
-            raise ValueError("TIMEOUT_SECONDS must be at least 60")
+        if self.BASE_TIMEOUT_SECONDS < 60:
+            raise ValueError("BASE_TIMEOUT_SECONDS must be at least 60")
 
     @classmethod
     def from_env(cls) -> "SchedulerConfig":
@@ -56,8 +69,9 @@ class SchedulerConfig:
 
         # Basic settings
         fetch_interval = int(os.getenv("FETCH_INTERVAL", "60"))
-        max_parallel = int(os.getenv("MAX_PARALLEL", "3"))
-        timeout_seconds = int(os.getenv("TIMEOUT_SECONDS", "3600"))
+        max_parallel = 3  # 固定为 3，分区调度策略需要
+        base_timeout_seconds = int(os.getenv("TIMEOUT_SECONDS", "3600"))
+        timeout_seconds = base_timeout_seconds  # 兼容旧字段
         competition_api_url = os.getenv("COMPETITION_API_URL", "http://host.docker.internal")
         agent_token = os.getenv("AGENT_TOKEN", "") or os.getenv("COMPETITION_API_TOKEN", "")
 
@@ -83,6 +97,7 @@ class SchedulerConfig:
         return cls(
             FETCH_INTERVAL=fetch_interval,
             MAX_PARALLEL=max_parallel,
+            BASE_TIMEOUT_SECONDS=base_timeout_seconds,
             TIMEOUT_SECONDS=timeout_seconds,
             COMPETITION_API_URL=competition_api_url,
             AGENT_TOKEN=agent_token,

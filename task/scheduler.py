@@ -12,7 +12,7 @@ from typing import Optional, Dict, List
 # 添加父目录到路径以导入本地模块
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import SchedulerConfig
+from config import SchedulerConfig, ZONE_TIMEOUT_RATIOS, ZONE_HIGH_PARALLEL, ZONE_LOW_PARALLEL
 from challenge_state import ChallengeStateManager, ChallengeStateData
 from container_manager import ContainerManager
 
@@ -44,6 +44,11 @@ def _difficulty_order(difficulty: str) -> int:
     return order.get(difficulty, 3)
 
 
+def _sort_level_key(level: int) -> int:
+    """排序用 level 权重：level=0 视为最低优先级（排到最后）"""
+    return -level if level > 0 else 99
+
+
 class ChallengeScheduler:
     """CTF 挑战调度器（双层管理：平台实例 + 本地容器）"""
 
@@ -58,7 +63,8 @@ class ChallengeScheduler:
 
         self.state_manager = ChallengeStateManager(
             config.STATE_FILE,
-            default_timeout=config.TIMEOUT_SECONDS
+            default_timeout=config.TIMEOUT_SECONDS,
+            zone_timeout_func=self._get_zone_timeout,
         )
         self.container_manager = ContainerManager(
             docker_image=config.DOCKER_IMAGE,
@@ -94,6 +100,31 @@ class ChallengeScheduler:
     def _clamp_level(level: int) -> int:
         """将 current_level 限制在 1-4 范围内"""
         return max(1, min(4, level))
+
+    def _get_zone_timeout(self, level: int) -> int:
+        """根据分区计算超时时间
+
+        Zone 1/2: base × 50%
+        Zone 3/4: base × 300%
+        """
+        ratio = ZONE_TIMEOUT_RATIOS.get(level, 1.0)
+        return int(self.config.BASE_TIMEOUT_SECONDS * ratio)
+
+    def _count_started_by_zone_group(self) -> Dict[str, int]:
+        """统计当前 started 题目的分区分布
+
+        Returns:
+            {"high": zone34数量, "low": zone12数量}
+        """
+        started = self.state_manager.get_challenges_by_state(STATE_STARTED)
+        high = sum(1 for c in started if c.level >= 3)
+        low = sum(1 for c in started if c.level < 3)
+        return {"high": high, "low": low}
+
+    @staticmethod
+    def _is_zone_high(level: int) -> bool:
+        """判断是否为高分区（Zone 3/4）"""
+        return level >= 3
 
     @staticmethod
     def _load_blacklist() -> set:
@@ -160,7 +191,11 @@ class ChallengeScheduler:
     def start(self):
         """启动调度器"""
         self.logger.info("启动 CTF 挑战调度器", "start")
-        self.logger.info(f"配置: 并行={self.config.MAX_PARALLEL}, 超时={self.config.TIMEOUT_SECONDS}s")
+        self.logger.info(
+            f"配置: 并行={self.config.MAX_PARALLEL} (Zone3/4={ZONE_HIGH_PARALLEL} + Zone1/2={ZONE_LOW_PARALLEL}), "
+            f"基础超时={self.config.BASE_TIMEOUT_SECONDS}s "
+            f"(Zone1/2={self._get_zone_timeout(1)}s, Zone3/4={self._get_zone_timeout(3)}s)"
+        )
         self.logger.info(f"平台: {self.config.COMPETITION_API_URL}")
         self.running = True
         self.run()
@@ -515,7 +550,7 @@ class ChallengeScheduler:
                     self._stop_challenge_full(challenge_code)
 
     def _check_and_retry_failed(self, platform_challenges: Optional[List[Dict]] = None):
-        """检查是否需要重试失败的任务"""
+        """检查是否需要重试失败的任务（分区调度：Zone 3/4 优先占 2 槽位，Zone 1/2 占 1 槽位，允许互借）"""
         # 1. 检查前提：无 open 状态的题目（新题目优先处理）
         open_challenges = self.state_manager.get_challenges_by_state(STATE_OPEN)
         # 过滤黑名单题目（黑名单 OPEN 不会启动，不应阻塞重试）
@@ -524,12 +559,15 @@ class ChallengeScheduler:
         if open_challenges:
             return
 
-        # 2. 计算可用的重试槽位 = MAX_PARALLEL - 当前 started 数量
-        started_challenges = self.state_manager.get_challenges_by_state(STATE_STARTED)
-        available_slots = self.config.MAX_PARALLEL - len(started_challenges)
+        # 2. 统计当前 started 按分区分组，计算可用重试槽位
+        zone_counts = self._count_started_by_zone_group()
+        total_running = zone_counts["high"] + zone_counts["low"]
 
-        if available_slots <= 0:
+        if total_running >= self.config.MAX_PARALLEL:
             return
+
+        high_slots = max(0, ZONE_HIGH_PARALLEL - zone_counts["high"])
+        low_slots = max(0, ZONE_LOW_PARALLEL - zone_counts["low"])
 
         # 3. 获取所有失败的题目
         failed_challenges = self.state_manager.get_challenges_by_state(STATE_FAIL)
@@ -540,17 +578,13 @@ class ChallengeScheduler:
             return
 
         # 3.5 验证失败题目在平台上的状态：存在且未解决的才重试
-        # 仅在平台有数据（非空列表）时验证；无数据时保持失败题目原状，等待平台恢复
         if platform_challenges:
-            # 构建平台题目映射: code -> platform_data
             platform_map = {c.get("code", ""): c for c in platform_challenges}
             valid_failed = []
             for c in failed_challenges:
                 code = c.challenge_code
                 pc = platform_map.get(code)
                 if pc is None:
-                    # 题目暂不在平台列表中，本轮跳过但不关闭
-                    # 等平台重新列出后自然进入重试流程
                     self.logger.info(
                         f"挑战 {code} 暂不在平台列表中，本轮跳过重试", "retry"
                     )
@@ -558,7 +592,6 @@ class ChallengeScheduler:
                 flag_got = pc.get("flag_got_count", 0)
                 flag_total = pc.get("flag_count", 1)
                 if flag_got >= flag_total:
-                    # 题目已在平台上被解决，标记为 SUCCESS
                     self.logger.info(
                         f"挑战 {code} 平台确认已解决（重试前检测），不再重试", "retry"
                     )
@@ -573,7 +606,6 @@ class ChallengeScheduler:
         retryable = [c for c in failed_challenges if c.retry_num < self.config.TASK_RETRY_MAX]
 
         if not retryable:
-            # 仅记录刚达到上限的题目（retry_num == TASK_RETRY_MAX），避免每周期重复
             newly_exhausted = [c for c in failed_challenges
                                if c.retry_num == self.config.TASK_RETRY_MAX]
             for c in newly_exhausted:
@@ -582,7 +614,6 @@ class ChallengeScheduler:
                     f"({c.retry_num}/{self.config.TASK_RETRY_MAX})，放弃",
                     "retry"
                 )
-                # 标记为已记录，后续周期不再输出
                 self.state_manager.update_state(
                     c.challenge_code,
                     STATE_FAIL,
@@ -591,10 +622,29 @@ class ChallengeScheduler:
             return
 
         # 5. 按 retry_num 升序，同 retry_num 按 level 降序 → 难度升序
-        retryable.sort(key=lambda c: (c.retry_num, -c.level, _difficulty_order(c.difficulty)))
+        retryable.sort(key=lambda c: (c.retry_num, _sort_level_key(c.level), _difficulty_order(c.difficulty)))
 
-        # 6. 只重置 available_slots 个题目
-        to_retry = retryable[:available_slots]
+        # 6. 分区分配重试槽位
+        high_retryable = [c for c in retryable if self._is_zone_high(c.level)]
+        low_retryable = [c for c in retryable if not self._is_zone_high(c.level)]
+
+        to_retry = []
+
+        # 第一轮：按分区严格分配
+        to_retry.extend(high_retryable[:high_slots])
+        to_retry.extend(low_retryable[:low_slots])
+
+        # 第二轮：互借剩余槽位（总上限 MAX_PARALLEL）
+        already_selected = {c.challenge_code for c in to_retry}
+        remaining_slots = self.config.MAX_PARALLEL - total_running - len(to_retry)
+        if remaining_slots > 0:
+            for c in retryable:
+                if remaining_slots <= 0:
+                    break
+                if c.challenge_code not in already_selected:
+                    to_retry.append(c)
+                    already_selected.add(c.challenge_code)
+                    remaining_slots -= 1
 
         # 7. 重置状态为 open，retry_num + 1
         for challenge in to_retry:
@@ -609,30 +659,73 @@ class ChallengeScheduler:
             )
             self.logger.info(
                 f"重试题目 {challenge.challenge_code} (第 {new_retry}/{self.config.TASK_RETRY_MAX} 次, "
-                f"难度: {challenge.difficulty})",
+                f"Zone {challenge.level}, 难度: {challenge.difficulty})",
                 "retry"
             )
 
     def _start_new_challenges(self):
-        """启动新挑战（双层：先启动平台实例，再启动本地容器）"""
-        started = self.state_manager.get_challenges_by_state(STATE_STARTED)
-        running_count = len(started)
+        """启动新挑战（分区调度：Zone 3/4 优先占 2 槽位，Zone 1/2 占 1 槽位，允许互借）"""
+        zone_counts = self._count_started_by_zone_group()
+        total_running = zone_counts["high"] + zone_counts["low"]
 
-        if running_count >= self.config.MAX_PARALLEL:
+        if total_running >= self.config.MAX_PARALLEL:
             return
 
         open_challenges = self.state_manager.get_challenges_by_state(STATE_OPEN)
         # 过滤黑名单题目
         if self._blacklist:
             open_challenges = [c for c in open_challenges if c.challenge_code not in self._blacklist]
-        open_challenges.sort(key=lambda c: (-c.level, _difficulty_order(c.difficulty), c.fetched_at))
+        open_challenges.sort(key=lambda c: (_sort_level_key(c.level), _difficulty_order(c.difficulty), c.fetched_at))
 
+        if not open_challenges:
+            return
+
+        # 计算各分区可用槽位
+        high_slots = max(0, ZONE_HIGH_PARALLEL - zone_counts["high"])
+        low_slots = max(0, ZONE_LOW_PARALLEL - zone_counts["low"])
+
+        # 分区启动：先按分区槽位分配，再互借剩余
+        started_count = 0
+
+        # 第一轮：按分区严格分配
         for challenge in open_challenges:
-            if running_count >= self.config.MAX_PARALLEL:
+            if total_running + started_count >= self.config.MAX_PARALLEL:
                 break
 
-            if self._transition_to_started(challenge):
-                running_count += 1
+            is_high = self._is_zone_high(challenge.level)
+            if is_high and high_slots > 0:
+                if self._transition_to_started(challenge):
+                    started_count += 1
+                    high_slots -= 1
+            elif not is_high and low_slots > 0:
+                if self._transition_to_started(challenge):
+                    started_count += 1
+                    low_slots -= 1
+
+        # 第二轮：互借剩余槽位（总上限 MAX_PARALLEL）
+        remaining_slots = self.config.MAX_PARALLEL - total_running - started_count
+        if remaining_slots > 0:
+            # 重新获取未启动的 open 题目
+            open_challenges = self.state_manager.get_challenges_by_state(STATE_OPEN)
+            if self._blacklist:
+                open_challenges = [c for c in open_challenges if c.challenge_code not in self._blacklist]
+            open_challenges.sort(key=lambda c: (_sort_level_key(c.level), _difficulty_order(c.difficulty), c.fetched_at))
+
+            for challenge in open_challenges:
+                if remaining_slots <= 0:
+                    break
+                if self._transition_to_started(challenge):
+                    started_count += 1
+                    remaining_slots -= 1
+
+        if started_count > 0:
+            zone_counts_after = self._count_started_by_zone_group()
+            self.logger.info(
+                f"本轮启动 {started_count} 个新挑战 "
+                f"(Zone3/4: {zone_counts['high']}→{zone_counts_after['high']}, "
+                f"Zone1/2: {zone_counts['low']}→{zone_counts_after['low']})",
+                "start"
+            )
 
     def _transition_to_started(self, challenge: ChallengeStateData) -> bool:
         """转换状态为 started（双层：启动平台实例 + 本地容器）"""
@@ -721,6 +814,7 @@ class ChallengeScheduler:
                 entrypoint=entrypoint,
                 hint_content=hint_content,
                 hint_viewed=hint_viewed,
+                timeout_seconds=self._get_zone_timeout(challenge.level),
             )
 
             self.logger.info(
@@ -828,8 +922,10 @@ def main():
 
     print(f"[+] 配置加载成功:")
     print(f"    - 平台: {config.COMPETITION_API_URL}")
-    print(f"    - 并行: {config.MAX_PARALLEL}")
-    print(f"    - 超时: {config.TIMEOUT_SECONDS}s")
+    print(f"    - 并行: {config.MAX_PARALLEL} (Zone3/4={ZONE_HIGH_PARALLEL} + Zone1/2={ZONE_LOW_PARALLEL})")
+    print(f"    - 基础超时: {config.BASE_TIMEOUT_SECONDS}s "
+          f"(Zone1/2={int(config.BASE_TIMEOUT_SECONDS * ZONE_TIMEOUT_RATIOS[1])}s, "
+          f"Zone3/4={int(config.BASE_TIMEOUT_SECONDS * ZONE_TIMEOUT_RATIOS[3])}s)")
     print(f"    - LLM 数量: {len(config.llm_configs)}")
     print(f"    - 状态文件: {config.STATE_FILE}")
     print(f"    - 日志文件: {config.LOG_FILE}")

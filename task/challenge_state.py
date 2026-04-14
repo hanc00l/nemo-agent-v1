@@ -9,7 +9,7 @@ import fcntl
 import json
 import time
 from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Optional, Any
+from typing import Callable, Dict, List, Optional, Any
 from datetime import datetime, timezone
 from threading import Lock
 
@@ -58,11 +58,19 @@ class ChallengeStateData:
 class ChallengeStateManager:
     """线程安全的挑战状态管理器"""
 
-    def __init__(self, state_file: str, default_timeout: int = 3600):
+    def __init__(self, state_file: str, default_timeout: int = 3600,
+                 zone_timeout_func: Optional[Callable[[int], int]] = None):
         self.state_file = state_file
         self.default_timeout = default_timeout
+        self.zone_timeout_func = zone_timeout_func
         self._lock = Lock()
         self._ensure_state_file()
+
+    def _compute_timeout(self, level: int) -> int:
+        """根据分区计算超时时间，无 func 或 level=0 时回退到 default_timeout"""
+        if self.zone_timeout_func and level > 0:
+            return self.zone_timeout_func(level)
+        return self.default_timeout
 
     def _ensure_state_file(self):
         """确保状态文件存在"""
@@ -231,7 +239,7 @@ class ChallengeStateManager:
                     state="open",
                     fetched_at=now,
                     updated_at=now,
-                    timeout_seconds=self.default_timeout,
+                    timeout_seconds=self._compute_timeout(level),
                     containers=[],
                     result=None,
                     hint_viewed=hint_viewed,
@@ -368,7 +376,7 @@ class ChallengeStateManager:
                         state=initial_state,
                         fetched_at=now,
                         updated_at=now,
-                        timeout_seconds=self.default_timeout,
+                        timeout_seconds=self._compute_timeout(pc.get("level", 0)),
                         containers=[],
                         result=initial_result,
                         hint_viewed=pc.get("hint_viewed", False),
@@ -401,6 +409,9 @@ class ChallengeStateManager:
                         ]:
                             if platform_key in pc:
                                 local_c[field_key] = pc[platform_key]
+                        # 始终重新计算超时（确保配置变更/代码升级后超时正确）
+                        current_level = local_c.get("level", 0)
+                        local_c["timeout_seconds"] = self._compute_timeout(current_level)
                         # 同步 entrypoint
                         entrypoint = pc.get("entrypoint") or []
                         local_c["entrypoint"] = entrypoint
