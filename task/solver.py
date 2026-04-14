@@ -274,7 +274,7 @@ if __name__ == "__main__":
             all_output = ""
             for r in result.results:
                 if r:
-                    output = r.get("output", "")
+                    output = r.get("output") or ""
                     all_output += output + "\n"
 
             flag = extract_flag(all_output)

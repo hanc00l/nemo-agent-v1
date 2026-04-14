@@ -318,10 +318,13 @@ class ChallengeStateManager:
                 new_codes = platform_codes - local_codes
 
                 # 计算需要移除的挑战
+                # 仅关闭 open 状态（无容器运行）的题目
+                # started 状态的题目保留，由超时机制自然处理
+                # 原因：平台可能暂时不返回某些题目（暂停/维护），不应中断正在解题的 Agent
                 removed_codes = []
                 for code in local_codes - platform_codes:
                     local_state = local_challenges[code].get("state")
-                    if local_state in ("open", "started"):
+                    if local_state == "open":
                         removed_codes.append(code)
 
                 # 检查已解决的挑战
@@ -416,12 +419,10 @@ class ChallengeStateManager:
                             local_challenges[code]["result"] = None
                             recovered_codes.append(code)
 
-                # 移除已删除的挑战
+                # 移除已删除的挑战（仅 open → close）
                 for code in removed_codes:
-                    local_state = local_challenges[code].get("state")
-                    if local_state in ("open", "started"):
-                        local_challenges[code]["state"] = "close"
-                        local_challenges[code]["updated_at"] = now
+                    local_challenges[code]["state"] = "close"
+                    local_challenges[code]["updated_at"] = now
 
                 # 更新已解决的挑战
                 for code in solved_codes:

@@ -193,7 +193,17 @@ class ChallengeScheduler:
                     self._sleep_interruptible(self.config.FETCH_INTERVAL)
                     continue
 
-                # 2. 同步本地状态
+                # 区分"平台返回空列表"和"平台正常返回数据"
+                # 空列表可能是平台暂停/维护，不应触发状态降级
+                if not platform_challenges:
+                    self.logger.info("平台返回空题目列表，跳过同步（可能平台暂停/维护）", "fetch")
+                    # 空列表时仅执行超时检查和容器维护（不依赖平台数据），跳过同步/清理/重试
+                    self._check_timeouts()
+                    self._maintain_containers(None)
+                    self._sleep_interruptible(self.config.FETCH_INTERVAL)
+                    continue
+
+                # 2. 同步本地状态（仅在平台有数据时执行）
                 sync_result = self.state_manager.sync_with_platform(platform_challenges)
                 if sync_result["new"]:
                     self.logger.info(f"新增 {len(sync_result['new'])} 个挑战", "fetch")
@@ -222,8 +232,8 @@ class ChallengeScheduler:
                 # 7. 启动新挑战
                 self._start_new_challenges()
 
-                # 8. 检查并重试失败的任务
-                self._check_and_retry_failed()
+                # 8. 检查并重试失败的任务（传入平台数据验证）
+                self._check_and_retry_failed(platform_challenges)
 
             except Exception as e:
                 self.logger.error(f"主循环出错: {e}", "error")
@@ -439,8 +449,21 @@ class ChallengeScheduler:
                             else:
                                 self.logger.error(f"平台实例重新启动失败: {challenge_code}", "container")
                     else:
-                        instance_alive = False
-                        self.logger.warn(f"挑战 {challenge_code} 不在平台列表中", "container")
+                        # 题目暂不在平台列表中（可能暂停/维护）
+                        # 不关闭已有容器，但也不重建（平台实例大概率不可用）
+                        # 仅重启已死亡的容器（如有），等题目重新出现后恢复正常维护
+                        self.logger.info(
+                            f"挑战 {challenge_code} 暂不在平台列表中，仅重启已有容器",
+                            "container"
+                        )
+                        # 检查本地容器状态，只重启不重建
+                        statuses = self.container_manager.get_container_status(challenge_code)
+                        if statuses:
+                            restarted = self.container_manager.restart_dead_containers(challenge_code)
+                            if restarted:
+                                self.logger.info(f"重启 {len(restarted)} 个容器: {challenge_code}", "container")
+                        # 跳过后续的平台实例检查和容器重建逻辑
+                        continue
                 except Exception as e:
                     self.logger.warn(f"检查平台实例状态失败: {e}", "container")
 
@@ -491,7 +514,7 @@ class ChallengeScheduler:
                     self.logger.info(f"清理 {state} 状态的容器: {challenge_code}", "container")
                     self._stop_challenge_full(challenge_code)
 
-    def _check_and_retry_failed(self):
+    def _check_and_retry_failed(self, platform_challenges: Optional[List[Dict]] = None):
         """检查是否需要重试失败的任务"""
         # 1. 检查前提：无 open 状态的题目（新题目优先处理）
         open_challenges = self.state_manager.get_challenges_by_state(STATE_OPEN)
@@ -515,6 +538,36 @@ class ChallengeScheduler:
             failed_challenges = [c for c in failed_challenges if c.challenge_code not in self._blacklist]
         if not failed_challenges:
             return
+
+        # 3.5 验证失败题目在平台上的状态：存在且未解决的才重试
+        # 仅在平台有数据（非空列表）时验证；无数据时保持失败题目原状，等待平台恢复
+        if platform_challenges:
+            # 构建平台题目映射: code -> platform_data
+            platform_map = {c.get("code", ""): c for c in platform_challenges}
+            valid_failed = []
+            for c in failed_challenges:
+                code = c.challenge_code
+                pc = platform_map.get(code)
+                if pc is None:
+                    # 题目暂不在平台列表中，本轮跳过但不关闭
+                    # 等平台重新列出后自然进入重试流程
+                    self.logger.info(
+                        f"挑战 {code} 暂不在平台列表中，本轮跳过重试", "retry"
+                    )
+                    continue
+                flag_got = pc.get("flag_got_count", 0)
+                flag_total = pc.get("flag_count", 1)
+                if flag_got >= flag_total:
+                    # 题目已在平台上被解决，标记为 SUCCESS
+                    self.logger.info(
+                        f"挑战 {code} 平台确认已解决（重试前检测），不再重试", "retry"
+                    )
+                    self.state_manager.update_state(code, STATE_SUCCESS, result="solved_confirmed_on_retry")
+                    continue
+                valid_failed.append(c)
+            failed_challenges = valid_failed
+            if not failed_challenges:
+                return
 
         # 4. 过滤可重试的（retry_num < TASK_RETRY_MAX）
         retryable = [c for c in failed_challenges if c.retry_num < self.config.TASK_RETRY_MAX]
