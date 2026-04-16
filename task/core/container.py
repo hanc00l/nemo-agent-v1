@@ -271,6 +271,8 @@ def build_task_prompt(target_url: str, challenge_code: str, competition_mode: bo
 
     prompt = f"""使用pentest-agent，对以下目标进行渗透测试，获取 flag。
 
+**开始前必须先读笔记！如果笔记中包含有重要的凭证信息、已有的攻击路径和成果，必须首先遵守笔记中的渗透测试流程！！！**
+
 ## 目标信息
 
 - 目标 URL: {target_url}
