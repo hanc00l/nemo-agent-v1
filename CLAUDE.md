@@ -190,10 +190,7 @@ detail = read_vuln_file("framework/ThinkPHP5-5.0.23-远程代码执行漏洞.md"
 ## 技能索引
 
 ### 核心技能
-- [reconnaissance](claude-code/.claude/skills/pentest/core/reconnaissance/SKILL.md) — 手动/主动侦察
-- [vulnerability-testing](claude-code/.claude/skills/pentest/core/vulnerability-testing/SKILL.md) — 漏洞测试与利用
-- [ctf-workflow](claude-code/.claude/skills/pentest/core/ctf-workflow/SKILL.md) — 竞赛流程与超时规则
-- [reporting](claude-code/.claude/skills/pentest/core/reporting/SKILL.md) — 解题报告
+- [reporting](claude-code/.claude/skills/pentest/reporting/SKILL.md) — 解题报告
 - [business-logic](claude-code/.claude/skills/pentest/business-logic/SKILL.md) — 业务逻辑漏洞
 
 ### MCP 工具技能
@@ -204,19 +201,8 @@ detail = read_vuln_file("framework/ThinkPHP5-5.0.23-远程代码执行漏洞.md"
 - [reverse](claude-code/.claude/skills/pentest/reverse/SKILL.md) — 反连/JNDI 注入
 
 ### Web 安全（Zone 1）
-- [web/](claude-code/.claude/skills/pentest/web/SKILL.md) — 企业级 Web 漏洞
-- [xray](claude-code/.claude/skills/pentest/web/xray.md) — 被动代理扫描
-- [sqlmap](claude-code/.claude/skills/pentest/web/sqlmap.md) — SQL 注入
-- [waf-bypass](claude-code/.claude/skills/pentest/web/waf-bypass.md) — WAF 绕过策略
-- [java-deserialization](claude-code/.claude/skills/pentest/web/java-deserialization.md) — Java 反序列化（JYso）
-- [shiro](claude-code/.claude/skills/pentest/web/shiro.md) / [fastjson](claude-code/.claude/skills/pentest/web/fastjson.md) / [spring-boot](claude-code/.claude/skills/pentest/web/spring-boot.md) — 框架漏洞
-- [wsh](claude-code/.claude/skills/pentest/web/wsh.md) — Webshell 管理
-- [weevely3](claude-code/.claude/skills/pentest/web/tools/weevely3.md) — PHP Webshell
-- [oa-systems](claude-code/.claude/skills/pentest/web/oa-systems/SKILL.md) — OA 系统测试
 
 ### CVE / 知识库（Zone 2）
-- [cve/](claude-code/.claude/skills/pentest/cve/SKILL.md) — CVE 利用方法论
-- [nuclei](claude-code/.claude/skills/pentest/cve/tools/nuclei.md) — nuclei 三阶段扫描
 - [jndi-exploit](claude-code/.claude/skills/pentest/reverse/jndi-exploit.md) — JNDI 注入利用
 - [vulnerability-wiki](claude-code/.claude/skills/pentest/vulnerability-wiki/SKILL.md) — 漏洞知识库
 - [vulhub](claude-code/.claude/skills/pentest/vulhub/SKILL.md) — 漏洞环境知识库

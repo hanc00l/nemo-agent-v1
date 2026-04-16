@@ -8,6 +8,17 @@ export MCP_PORT=8000
 export COMPETITION_API_URL=http://192.168.52.1:8888
 export NO_VISION=true
 export REVERSE_IP="192.168.52.101"
+export PORT_NC="20000"
+export PORT_NC2="20001"
+export PORT_JNDI_LDAP="20002"
+export PORT_JNDI_HTTP="20003"
+export PORT_SOCKS5="20004"
+export PORT_FRP="20005"
+export PORT_FRP_DASHBOARD="20006"
+export PORT_MSF="20007"
+export PORT_CHISEL="20008"
+export PORT_STOWAWAY="20009"
+
 
 # local
 source .venv/bin/activate
