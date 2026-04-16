@@ -98,13 +98,13 @@ class ChallengeScheduler:
 
     @staticmethod
     def _clamp_level(level: int) -> int:
-        """将 current_level 限制在 1-4 范围内"""
-        return max(1, min(4, level))
+        """将 current_level 限制在 0-4 范围内"""
+        return max(0, min(4, level))
 
     def _get_zone_timeout(self, level: int) -> int:
         """根据分区计算超时时间
 
-        Zone 1/2: base × 50%
+        Zone 0/1/2: base × 50%
         Zone 3/4: base × 300%
         """
         ratio = ZONE_TIMEOUT_RATIOS.get(level, 1.0)
@@ -114,7 +114,7 @@ class ChallengeScheduler:
         """统计当前 started 题目的分区分布
 
         Returns:
-            {"high": zone34数量, "low": zone12数量}
+            {"high": zone34数量, "low": zone012数量}
         """
         started = self.state_manager.get_challenges_by_state(STATE_STARTED)
         high = sum(1 for c in started if c.level >= 3)
@@ -192,9 +192,9 @@ class ChallengeScheduler:
         """启动调度器"""
         self.logger.info("启动 CTF 挑战调度器", "start")
         self.logger.info(
-            f"配置: 并行={self.config.MAX_PARALLEL} (Zone3/4={ZONE_HIGH_PARALLEL} + Zone1/2={ZONE_LOW_PARALLEL}), "
+            f"配置: 并行={self.config.MAX_PARALLEL} (Zone3/4={ZONE_HIGH_PARALLEL} + Zone0/1/2={ZONE_LOW_PARALLEL}), "
             f"基础超时={self.config.BASE_TIMEOUT_SECONDS}s "
-            f"(Zone1/2={self._get_zone_timeout(1)}s, Zone3/4={self._get_zone_timeout(3)}s)"
+            f"(Zone0/1/2={self._get_zone_timeout(0)}s, Zone3/4={self._get_zone_timeout(3)}s)"
         )
         self.logger.info(f"平台: {self.config.COMPETITION_API_URL}")
         self.running = True
@@ -550,7 +550,7 @@ class ChallengeScheduler:
                     self._stop_challenge_full(challenge_code)
 
     def _check_and_retry_failed(self, platform_challenges: Optional[List[Dict]] = None):
-        """检查是否需要重试失败的任务（分区调度：Zone 3/4 优先占 2 槽位，Zone 1/2 占 1 槽位，允许互借）"""
+        """检查是否需要重试失败的任务（分区调度：Zone 3/4 优先占 2 槽位，Zone 0/1/2 占 1 槽位，允许互借）"""
         # 1. 检查前提：无 open 状态的题目（新题目优先处理）
         open_challenges = self.state_manager.get_challenges_by_state(STATE_OPEN)
         # 过滤黑名单题目（黑名单 OPEN 不会启动，不应阻塞重试）
@@ -664,7 +664,7 @@ class ChallengeScheduler:
             )
 
     def _start_new_challenges(self):
-        """启动新挑战（分区调度：Zone 3/4 优先占 2 槽位，Zone 1/2 占 1 槽位，允许互借）"""
+        """启动新挑战（分区调度：Zone 3/4 优先占 2 槽位，Zone 0/1/2 占 1 槽位，允许互借）"""
         zone_counts = self._count_started_by_zone_group()
         total_running = zone_counts["high"] + zone_counts["low"]
 
@@ -723,7 +723,7 @@ class ChallengeScheduler:
             self.logger.info(
                 f"本轮启动 {started_count} 个新挑战 "
                 f"(Zone3/4: {zone_counts['high']}→{zone_counts_after['high']}, "
-                f"Zone1/2: {zone_counts['low']}→{zone_counts_after['low']})",
+                f"Zone0/1/2: {zone_counts['low']}→{zone_counts_after['low']})",
                 "start"
             )
 
@@ -922,9 +922,9 @@ def main():
 
     print(f"[+] 配置加载成功:")
     print(f"    - 平台: {config.COMPETITION_API_URL}")
-    print(f"    - 并行: {config.MAX_PARALLEL} (Zone3/4={ZONE_HIGH_PARALLEL} + Zone1/2={ZONE_LOW_PARALLEL})")
+    print(f"    - 并行: {config.MAX_PARALLEL} (Zone3/4={ZONE_HIGH_PARALLEL} + Zone0/1/2={ZONE_LOW_PARALLEL})")
     print(f"    - 基础超时: {config.BASE_TIMEOUT_SECONDS}s "
-          f"(Zone1/2={int(config.BASE_TIMEOUT_SECONDS * ZONE_TIMEOUT_RATIOS[1])}s, "
+          f"(Zone0/1/2={int(config.BASE_TIMEOUT_SECONDS * ZONE_TIMEOUT_RATIOS[0])}s, "
           f"Zone3/4={int(config.BASE_TIMEOUT_SECONDS * ZONE_TIMEOUT_RATIOS[3])}s)")
     print(f"    - LLM 数量: {len(config.llm_configs)}")
     print(f"    - 状态文件: {config.STATE_FILE}")

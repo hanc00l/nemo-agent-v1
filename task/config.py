@@ -10,8 +10,8 @@ from typing import List, Dict, Any
 # 导入核心模块
 from core import load_llm_configs, to_dict_list
 
-# 分区超时倍率：Zone 1/2 = 50%, Zone 3/4 = 300%
-ZONE_TIMEOUT_RATIOS = {1: 0.5, 2: 0.5, 3: 3.0, 4: 3.0}
+# 分区超时倍率：Zone 0/1/2 = 50%, Zone 3/4 = 300%
+ZONE_TIMEOUT_RATIOS = {0: 0.5, 1: 0.5, 2: 0.5, 3: 3.0, 4: 3.0}
 
 # 分区并行槽位：Zone 3/4 = 2 个, Zone 1/2 = 1 个
 ZONE_HIGH_PARALLEL = 2  # Zone 3/4
