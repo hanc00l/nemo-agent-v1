@@ -46,6 +46,12 @@ env/
 *.log
 logs/
 
+# Claude Code traces
+.claude-trace/
+
+# Web UI sessions
+web-ui/.sessions/
+
 # Runtime data
 task/data/*
 !task/data/.gitkeep
